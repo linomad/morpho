@@ -1,3 +1,4 @@
+import AppKit
 import MorphoKit
 import SwiftUI
 
@@ -49,11 +50,29 @@ struct MorphoMenuView: View {
     }
 
     private func openSettingsWindow() {
+        let windowsBefore = Set(NSApp.windows)
         openSettings()
         DispatchQueue.main.async {
+            NSApp.setActivationPolicy(.regular)
             NSApp.activate(ignoringOtherApps: true)
-            if let settingsWindow = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeKey }) {
+
+            // Find the settings window: either a newly appeared window,
+            // or a window whose title contains "Settings" / "设置"
+            let settingsWindow = NSApp.windows.first(where: { !windowsBefore.contains($0) && $0.canBecomeKey })
+                ?? NSApp.windows.first(where: {
+                    $0.canBecomeKey
+                    && !$0.isKind(of: NSPanel.self)
+                    && $0.isVisible
+                })
+
+            if let settingsWindow {
+                settingsWindow.level = .floating
                 settingsWindow.makeKeyAndOrderFront(nil)
+                settingsWindow.orderFrontRegardless()
+                // Reset to normal level so it behaves normally after being shown
+                DispatchQueue.main.async {
+                    settingsWindow.level = .normal
+                }
             }
         }
     }

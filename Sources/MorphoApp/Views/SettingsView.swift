@@ -96,6 +96,8 @@ struct SettingsView: View {
             model.updateAPIKeyDraft(apiKeyDraft)
             model.persistAPIKey()
             apiKeyDraft = model.apiKey
+            // Revert to accessory (menu bar only) when settings window closes
+            NSApp.setActivationPolicy(.accessory)
         }
         .onChange(of: model.settings.translationProvider) { _, _ in
             apiKeyDraft = model.apiKey
