@@ -11,6 +11,8 @@ public enum TranslationErrorPresenter {
             return "安全输入框不支持翻译。"
         case .unsupportedInputControl:
             return "当前输入控件不支持直接翻译。"
+        case .selectionRequiredForCurrentControl:
+            return "当前控件请先选中文本后翻译。"
         case .unableToIdentifyLanguage:
             return "无法识别源语言，请在设置中固定源语言后重试。"
         case .unsupportedLanguagePairing:

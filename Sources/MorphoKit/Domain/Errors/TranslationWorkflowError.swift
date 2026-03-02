@@ -5,6 +5,7 @@ public enum TranslationWorkflowError: Error, Equatable, Sendable {
     case focusedInputUnavailable
     case secureInputUnsupported
     case unsupportedInputControl
+    case selectionRequiredForCurrentControl
     case unableToIdentifyLanguage
     case unsupportedLanguagePairing
     case translationInterrupted

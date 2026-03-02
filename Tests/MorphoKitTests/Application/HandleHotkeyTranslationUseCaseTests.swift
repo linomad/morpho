@@ -160,6 +160,61 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(replacer.lastReplacementText, nil)
         XCTAssertEqual(statusSink.last?.severity, .warning)
     }
+
+    func testExecuteReportsWarningWhenSelectionIsRequiredForCurrentControl() async {
+        let permission = PermissionStub(isTrusted: true)
+        let contextProvider = ContextProviderStub(error: .selectionRequiredForCurrentControl)
+        let replacer = TextReplacerSpy()
+        let settingsStore = SettingsStoreStub()
+        let engineFactory = EngineFactoryStub()
+        let statusSink = StatusSinkSpy()
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .failure(.selectionRequiredForCurrentControl))
+        XCTAssertEqual(statusSink.last?.severity, .warning)
+        XCTAssertEqual(replacer.lastReplacementText, nil)
+    }
+
+    func testExecuteReportsWarningWhenReplacementRequiresSelection() async {
+        let permission = PermissionStub(isTrusted: true)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: "hello world",
+            selectedRange: NSRange(location: 0, length: 5),
+            selectedText: "hello",
+            isSecureField: false
+        )
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy(replaceError: TranslationWorkflowError.selectionRequiredForCurrentControl)
+        let settingsStore = SettingsStoreStub()
+        let engine = TranslationEngineStub(translatedText: "hola")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .failure(.selectionRequiredForCurrentControl))
+        XCTAssertEqual(statusSink.last?.severity, .warning)
+    }
 }
 
 private final class PermissionStub: AccessibilityPermissionChecking {
@@ -176,12 +231,18 @@ private final class PermissionStub: AccessibilityPermissionChecking {
 
 private final class ContextProviderStub: TextContextProvider {
     private let context: TextContext?
+    private let error: TranslationWorkflowError?
 
-    init(context: TextContext? = nil) {
+    init(context: TextContext? = nil, error: TranslationWorkflowError? = nil) {
         self.context = context
+        self.error = error
     }
 
     func captureFocusedContext() throws -> TextContext {
+        if let error {
+            throw error
+        }
+
         if let context {
             return context
         }
@@ -191,10 +252,19 @@ private final class ContextProviderStub: TextContextProvider {
 }
 
 private final class TextReplacerSpy: TextReplacer {
+    private let replaceError: Error?
     var lastReplacementMode: ReplacementMode?
     var lastReplacementText: String?
 
+    init(replaceError: Error? = nil) {
+        self.replaceError = replaceError
+    }
+
     func replace(in context: TextContext, with translatedText: String, mode: ReplacementMode) throws {
+        if let replaceError {
+            throw replaceError
+        }
+
         lastReplacementMode = mode
         lastReplacementText = translatedText
     }

@@ -37,4 +37,10 @@ final class TranslationErrorPresenterAdditionalTests: XCTestCase {
 
         XCTAssertEqual(message, "翻译服务暂时不可用，请稍后重试。")
     }
+
+    func testSelectionRequiredMessage() {
+        let message = TranslationErrorPresenter.message(for: .selectionRequiredForCurrentControl)
+
+        XCTAssertEqual(message, "当前控件请先选中文本后翻译。")
+    }
 }

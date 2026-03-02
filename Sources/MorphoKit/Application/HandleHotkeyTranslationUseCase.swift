@@ -33,7 +33,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         do {
             context = try contextProvider.captureFocusedContext()
         } catch let error as TranslationWorkflowError {
-            return fail(error, severity: .error)
+            return fail(error, severity: severity(for: error))
         } catch {
             return fail(.focusedInputUnavailable, severity: .error)
         }
@@ -58,13 +58,15 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
                 apiKey: settings.translationAPIKey
             )
         } catch let error as TranslationWorkflowError {
-            return fail(error, severity: .error)
+            return fail(error, severity: severity(for: error))
         } catch {
             return fail(.translationFailed, severity: .error)
         }
 
         do {
             try textReplacer.replace(in: context, with: translatedText, mode: payload.mode)
+        } catch let error as TranslationWorkflowError {
+            return fail(error, severity: severity(for: error))
         } catch {
             return fail(.replacementFailed, severity: .error)
         }
@@ -106,5 +108,14 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         )
 
         return .failure(error)
+    }
+
+    private func severity(for error: TranslationWorkflowError) -> StatusSeverity {
+        switch error {
+        case .selectionRequiredForCurrentControl:
+            return .warning
+        default:
+            return .error
+        }
     }
 }

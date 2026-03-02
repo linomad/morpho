@@ -33,7 +33,7 @@ final class MorphoAppModel: ObservableObject {
         self.statusReporter = statusReporter
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
 
-        let axGateway = AXTextContextGateway()
+        let textGateway = LayeredTextContextGateway()
         let siliconFlowEngine = CloudTranslationEngine(
             client: SiliconFlowTranslationProviderClient()
         )
@@ -43,8 +43,8 @@ final class MorphoAppModel: ObservableObject {
 
         self.useCase = HandleHotkeyTranslationUseCase(
             permissionChecker: AccessibilityPermissionService(),
-            contextProvider: axGateway,
-            textReplacer: axGateway,
+            contextProvider: textGateway,
+            textReplacer: textGateway,
             settingsStore: settingsStore,
             engineFactory: engineFactory,
             statusSink: statusReporter
