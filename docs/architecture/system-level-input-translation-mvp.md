@@ -7,7 +7,7 @@
 ## Product Scope (MVP)
 
 - 菜单栏常驻应用，无主业务窗口
-- 设置页：快捷键、源语言（支持自动检测）、目标语言、翻译后端（System/Cloud）
+- 设置页：快捷键、源语言（支持自动检测）、目标语言、云端 Provider、API Key
 - 翻译行为：
   - 若存在选中文本，翻译并替换选中
   - 若无选中，翻译并替换全文
@@ -25,8 +25,9 @@
 - Infrastructure
   - AX 网关：`AXTextContextGateway`
   - 全局热键：`GlobalHotkeyService`
-  - 翻译引擎：`SystemTranslationEngine` + `CloudTranslationEnginePlaceholder`
-  - 持久化：`UserDefaultsSettingsStore`
+  - 翻译引擎：`CloudTranslationEngine`
+  - Provider Client：`SiliconFlowTranslationProviderClient`
+  - 持久化：`UserDefaultsSettingsStore`（含 API Key）
   - 通知与状态：`UserNotificationStatusReporter`、`StatusCenter`
 - Presentation
   - 菜单栏：`MorphoMenuView`
@@ -46,7 +47,9 @@
 ## Technical Decisions
 
 - 最低系统版本：macOS 15+
-- System 翻译优先，Cloud 为占位扩展
+- 仅云端翻译，不再依赖本地/System 翻译
+- 当前 Provider 为 SiliconFlow（OpenAI-Compatible）
+- Provider 与 Credential 抽象独立，后续可扩展微软等接口
 - 不使用剪贴板回退或模拟输入，避免不可控副作用
 - AX 解析支持向父节点回溯与多文本类型解码（String/AttributedString/URL）
 
@@ -54,4 +57,4 @@
 
 - 非标准输入控件（尤其自绘组件）可能不暴露可写 AX 属性
 - 安全输入框（密码类）不处理
-- Cloud 后端尚未接入真实 API
+- 需用户在设置页填写有效 API Key 才可触发翻译

@@ -47,14 +47,15 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         }
 
         let settings = settingsStore.load()
-        let engine = engineFactory.makeEngine(for: settings.translationBackend)
+        let engine = engineFactory.makeEngine(for: settings.translationProvider)
 
         let translatedText: String
         do {
             translatedText = try await engine.translate(
                 payload.text,
                 source: settings.sourceLanguage,
-                target: settings.targetLanguage
+                target: settings.targetLanguage,
+                apiKey: settings.translationAPIKey
             )
         } catch let error as TranslationWorkflowError {
             return fail(error, severity: .error)

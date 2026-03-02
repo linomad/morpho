@@ -59,6 +59,8 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
 
         XCTAssertEqual(result, .success)
         XCTAssertEqual(engine.lastSourceText, "hello")
+        XCTAssertEqual(engine.lastAPIKey, AppSettings.defaultValue.translationAPIKey)
+        XCTAssertEqual(engineFactory.lastProvider, .siliconFlow)
         XCTAssertEqual(replacer.lastReplacementText, "你好")
         XCTAssertEqual(replacer.lastReplacementMode, .selection)
         XCTAssertEqual(statusSink.last?.severity, .success)
@@ -217,25 +219,34 @@ private final class SettingsStoreStub: SettingsStore {
 private final class TranslationEngineStub: TranslationEngine {
     private let translatedText: String
     var lastSourceText: String?
+    var lastAPIKey: String?
 
     init(translatedText: String = "translated") {
         self.translatedText = translatedText
     }
 
-    func translate(_ text: String, source: LanguageSource, target: Locale.Language) async throws -> String {
+    func translate(
+        _ text: String,
+        source: LanguageSource,
+        target: Locale.Language,
+        apiKey: String?
+    ) async throws -> String {
         lastSourceText = text
+        lastAPIKey = apiKey
         return translatedText
     }
 }
 
 private final class EngineFactoryStub: TranslationEngineFactoryProtocol {
     private let injectedEngine: (any TranslationEngine)?
+    private(set) var lastProvider: TranslationProvider?
 
     init(engine: (any TranslationEngine)? = nil) {
         self.injectedEngine = engine
     }
 
-    func makeEngine(for backend: TranslationBackend) -> any TranslationEngine {
+    func makeEngine(for provider: TranslationProvider) -> any TranslationEngine {
+        lastProvider = provider
         if let injectedEngine {
             return injectedEngine
         }

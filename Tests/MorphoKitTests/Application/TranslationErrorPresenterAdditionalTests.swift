@@ -11,24 +11,30 @@ final class TranslationErrorPresenterAdditionalTests: XCTestCase {
     func testUnsupportedPairingMessage() {
         let message = TranslationErrorPresenter.message(for: .unsupportedLanguagePairing)
 
-        XCTAssertEqual(message, "当前源语言与目标语言组合不受系统翻译支持。")
+        XCTAssertEqual(message, "当前源语言与目标语言组合暂不支持。")
     }
 
-    func testTranslationInProgressMessage() {
-        let message = TranslationErrorPresenter.message(for: .translationInProgress)
+    func testCloudCredentialMissingMessage() {
+        let message = TranslationErrorPresenter.message(for: .cloudCredentialMissing)
 
-        XCTAssertEqual(message, "翻译进行中，请稍后再试。")
+        XCTAssertEqual(message, "请先在设置中填写 API Key。")
     }
 
-    func testTranslationInterruptedMessage() {
-        let message = TranslationErrorPresenter.message(for: .translationInterrupted)
+    func testCloudAuthenticationFailedMessage() {
+        let message = TranslationErrorPresenter.message(for: .cloudAuthenticationFailed)
 
-        XCTAssertEqual(message, "翻译过程被中断，请重试。")
+        XCTAssertEqual(message, "API Key 校验失败，请检查后重试。")
     }
 
-    func testTranslationSessionStartupTimeoutMessage() {
-        let message = TranslationErrorPresenter.message(for: .translationSessionStartupTimeout)
+    func testCloudRateLimitedMessage() {
+        let message = TranslationErrorPresenter.message(for: .cloudRateLimited)
 
-        XCTAssertEqual(message, "系统翻译服务启动超时，请重试。")
+        XCTAssertEqual(message, "请求过于频繁，请稍后重试。")
+    }
+
+    func testCloudServiceUnavailableMessage() {
+        let message = TranslationErrorPresenter.message(for: .cloudServiceUnavailable)
+
+        XCTAssertEqual(message, "翻译服务暂时不可用，请稍后重试。")
     }
 }

@@ -1,23 +1,18 @@
 import Foundation
 
 public final class DefaultTranslationEngineFactory: TranslationEngineFactoryProtocol {
-    private let systemEngine: any TranslationEngine
-    private let cloudEngine: any TranslationEngine
+    private let siliconFlowEngine: any TranslationEngine
 
     public init(
-        systemEngine: any TranslationEngine,
-        cloudEngine: any TranslationEngine
+        siliconFlowEngine: any TranslationEngine
     ) {
-        self.systemEngine = systemEngine
-        self.cloudEngine = cloudEngine
+        self.siliconFlowEngine = siliconFlowEngine
     }
 
-    public func makeEngine(for backend: TranslationBackend) -> any TranslationEngine {
-        switch backend {
-        case .system:
-            return systemEngine
-        case .cloud:
-            return cloudEngine
+    public func makeEngine(for provider: TranslationProvider) -> any TranslationEngine {
+        switch provider {
+        case .siliconFlow:
+            return siliconFlowEngine
         }
     }
 }

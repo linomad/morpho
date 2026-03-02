@@ -7,12 +7,12 @@ public enum TranslationWorkflowError: Error, Equatable, Sendable {
     case unsupportedInputControl
     case unableToIdentifyLanguage
     case unsupportedLanguagePairing
-    case translationSessionStartupTimeout
-    case translationInProgress
     case translationInterrupted
     case noTextToTranslate
     case replacementFailed
     case translationFailed
-    case cloudEngineNotImplemented
-    case systemTranslatorUnavailable
+    case cloudCredentialMissing
+    case cloudAuthenticationFailed
+    case cloudRateLimited
+    case cloudServiceUnavailable
 }

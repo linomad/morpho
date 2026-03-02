@@ -11,7 +11,9 @@ public final class UserDefaultsSettingsStore: SettingsStore {
         let sourceMode: String
         let sourceLanguageIdentifier: String?
         let targetLanguageIdentifier: String
-        let translationBackend: String
+        let translationProvider: String?
+        let translationAPIKey: String?
+        let translationBackend: String?
     }
 
     private let defaults: UserDefaults
@@ -23,11 +25,12 @@ public final class UserDefaultsSettingsStore: SettingsStore {
     public func load() -> AppSettings {
         guard
             let data = defaults.data(forKey: Keys.settings),
-            let persisted = try? JSONDecoder().decode(PersistedSettings.self, from: data),
-            let backend = TranslationBackend(rawValue: persisted.translationBackend)
+            let persisted = try? JSONDecoder().decode(PersistedSettings.self, from: data)
         else {
             return .defaultValue
         }
+
+        let provider = resolveProvider(from: persisted)
 
         let sourceLanguage: LanguageSource
         if persisted.sourceMode == "fixed", let identifier = persisted.sourceLanguageIdentifier {
@@ -43,7 +46,8 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             ),
             sourceLanguage: sourceLanguage,
             targetLanguage: Locale.Language(identifier: persisted.targetLanguageIdentifier),
-            translationBackend: backend
+            translationProvider: provider,
+            translationAPIKey: persisted.translationAPIKey ?? ""
         )
     }
 
@@ -66,11 +70,26 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             sourceMode: sourceMode,
             sourceLanguageIdentifier: sourceIdentifier,
             targetLanguageIdentifier: LanguageIdentifierCodec.persistedIdentifier(for: settings.targetLanguage),
-            translationBackend: settings.translationBackend.rawValue
+            translationProvider: settings.translationProvider.rawValue,
+            translationAPIKey: settings.translationAPIKey,
+            translationBackend: nil
         )
 
         if let data = try? JSONEncoder().encode(persisted) {
             defaults.set(data, forKey: Keys.settings)
         }
+    }
+
+    private func resolveProvider(from persisted: PersistedSettings) -> TranslationProvider {
+        if let rawProvider = persisted.translationProvider,
+           let provider = TranslationProvider(rawValue: rawProvider) {
+            return provider
+        }
+
+        if persisted.translationBackend != nil {
+            return .siliconFlow
+        }
+
+        return AppSettings.defaultValue.translationProvider
     }
 }

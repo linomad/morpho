@@ -2,25 +2,25 @@ import XCTest
 @testable import MorphoKit
 
 final class TranslationEngineFactoryTests: XCTestCase {
-    func testFactoryReturnsSystemEngineForSystemBackend() {
+    func testFactoryReturnsSiliconFlowEngineForProvider() {
+        let engine = TranslationEngineStub()
         let factory = DefaultTranslationEngineFactory(
-            systemEngine: SystemTranslationEngine(),
-            cloudEngine: CloudTranslationEnginePlaceholder()
+            siliconFlowEngine: engine
         )
 
-        let engine = factory.makeEngine(for: .system)
+        let resolved = factory.makeEngine(for: .siliconFlow)
 
-        XCTAssertTrue(engine is SystemTranslationEngine)
+        XCTAssertTrue(resolved is TranslationEngineStub)
     }
+}
 
-    func testFactoryReturnsCloudEngineForCloudBackend() {
-        let factory = DefaultTranslationEngineFactory(
-            systemEngine: SystemTranslationEngine(),
-            cloudEngine: CloudTranslationEnginePlaceholder()
-        )
-
-        let engine = factory.makeEngine(for: .cloud)
-
-        XCTAssertTrue(engine is CloudTranslationEnginePlaceholder)
+private final class TranslationEngineStub: TranslationEngine {
+    func translate(
+        _ text: String,
+        source: LanguageSource,
+        target: Locale.Language,
+        apiKey: String?
+    ) async throws -> String {
+        text
     }
 }

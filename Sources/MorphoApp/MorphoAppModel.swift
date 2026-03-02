@@ -7,6 +7,7 @@ final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
 
     @Published private(set) var settings: AppSettings
+    @Published private(set) var apiKey: String
     @Published private(set) var lastStatus: StatusEntry
 
     private let settingsStore: SettingsStore
@@ -27,14 +28,17 @@ final class MorphoAppModel: ObservableObject {
 
         self.settingsStore = settingsStore
         self.settings = initialSettings
+        self.apiKey = initialSettings.translationAPIKey
         self.statusCenter = statusCenter
         self.statusReporter = statusReporter
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
 
         let axGateway = AXTextContextGateway()
+        let siliconFlowEngine = CloudTranslationEngine(
+            client: SiliconFlowTranslationProviderClient()
+        )
         let engineFactory = DefaultTranslationEngineFactory(
-            systemEngine: SystemTranslationEngine(),
-            cloudEngine: CloudTranslationEnginePlaceholder()
+            siliconFlowEngine: siliconFlowEngine
         )
 
         self.useCase = HandleHotkeyTranslationUseCase(
@@ -78,9 +82,22 @@ final class MorphoAppModel: ObservableObject {
         persistAndApplySettings()
     }
 
-    func updateBackend(_ backend: TranslationBackend) {
-        settings.translationBackend = backend
+    func updateProvider(_ provider: TranslationProvider) {
+        persistAPIKey()
+        settings.translationProvider = provider
+        apiKey = settings.translationAPIKey
         persistAndApplySettings()
+    }
+
+    func updateAPIKeyDraft(_ value: String) {
+        apiKey = value
+    }
+
+    func persistAPIKey() {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        apiKey = trimmed
+        settings.translationAPIKey = trimmed
+        persistSettings()
     }
 
     func updateHotkeyKeyCode(_ keyCode: UInt32) {
@@ -162,8 +179,12 @@ final class MorphoAppModel: ObservableObject {
     }
 
     private func persistAndApplySettings() {
-        settingsStore.save(settings)
+        persistSettings()
         registerHotkeyIfPossible()
+    }
+
+    private func persistSettings() {
+        settingsStore.save(settings)
     }
 
     private func registerHotkeyIfPossible() {

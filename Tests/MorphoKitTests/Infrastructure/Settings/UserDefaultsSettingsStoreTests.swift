@@ -10,7 +10,8 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
             hotkey: .defaultValue,
             sourceLanguage: .fixed(Locale.Language(identifier: "zh-Hant")),
             targetLanguage: Locale.Language(identifier: "zh-Hans"),
-            translationBackend: .system
+            translationProvider: .siliconFlow,
+            translationAPIKey: "sk-test-save"
         )
 
         store.save(settings)
@@ -23,6 +24,7 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(raw["sourceLanguageIdentifier"] as? String, Locale.Language(identifier: "zh-Hant").maximalIdentifier)
         XCTAssertEqual(raw["targetLanguageIdentifier"] as? String, Locale.Language(identifier: "zh-Hans").maximalIdentifier)
+        XCTAssertEqual(raw["translationAPIKey"] as? String, "sk-test-save")
     }
 
     func testLoadRestoresTraditionalChineseSourceLanguageSelection() {
@@ -32,7 +34,8 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
             hotkey: .defaultValue,
             sourceLanguage: .fixed(Locale.Language(identifier: "zh-Hant")),
             targetLanguage: Locale.Language(identifier: "en"),
-            translationBackend: .system
+            translationProvider: .siliconFlow,
+            translationAPIKey: "sk-test-load"
         )
 
         store.save(settings)
@@ -48,6 +51,26 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
             supportedIdentifiers: ["en", "zh-Hans", "zh-Hant"]
         )
         XCTAssertEqual(displayIdentifier, "zh-Hant")
+        XCTAssertEqual(loaded.translationAPIKey, "sk-test-load")
+    }
+
+    func testLoadMigratesLegacyBackendToSiliconFlowProvider() throws {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+
+        let legacyPayload: [String: Any] = [
+            "keyCode": 17,
+            "modifiers": 0,
+            "sourceMode": "auto",
+            "targetLanguageIdentifier": Locale.Language(identifier: "zh-Hans").maximalIdentifier,
+            "translationBackend": "system"
+        ]
+        let data = try JSONSerialization.data(withJSONObject: legacyPayload)
+        defaults.set(data, forKey: "morpho.app.settings")
+
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.translationProvider, .siliconFlow)
     }
 
     private func makeIsolatedDefaults() -> UserDefaults {

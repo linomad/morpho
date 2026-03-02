@@ -14,11 +14,7 @@ public enum TranslationErrorPresenter {
         case .unableToIdentifyLanguage:
             return "无法识别源语言，请在设置中固定源语言后重试。"
         case .unsupportedLanguagePairing:
-            return "当前源语言与目标语言组合不受系统翻译支持。"
-        case .translationSessionStartupTimeout:
-            return "系统翻译服务启动超时，请重试。"
-        case .translationInProgress:
-            return "翻译进行中，请稍后再试。"
+            return "当前源语言与目标语言组合暂不支持。"
         case .translationInterrupted:
             return "翻译过程被中断，请重试。"
         case .noTextToTranslate:
@@ -27,10 +23,14 @@ public enum TranslationErrorPresenter {
             return "翻译完成，但写回输入框失败。"
         case .translationFailed:
             return "翻译失败，请稍后重试。"
-        case .cloudEngineNotImplemented:
-            return "云端翻译尚未接入，请先使用系统翻译。"
-        case .systemTranslatorUnavailable:
-            return "系统翻译当前不可用，请安装语言包后重试。"
+        case .cloudCredentialMissing:
+            return "请先在设置中填写 API Key。"
+        case .cloudAuthenticationFailed:
+            return "API Key 校验失败，请检查后重试。"
+        case .cloudRateLimited:
+            return "请求过于频繁，请稍后重试。"
+        case .cloudServiceUnavailable:
+            return "翻译服务暂时不可用，请稍后重试。"
         }
     }
 }

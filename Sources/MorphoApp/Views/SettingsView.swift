@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var model: MorphoAppModel
+    @State private var apiKeyDraft = ""
 
     var body: some View {
         Form {
@@ -62,17 +63,24 @@ struct SettingsView: View {
             }
 
             Section("翻译引擎") {
-                Picker("引擎", selection: Binding(
-                    get: { model.settings.translationBackend },
-                    set: { model.updateBackend($0) }
+                Picker("Provider", selection: Binding(
+                    get: { model.settings.translationProvider },
+                    set: { model.updateProvider($0) }
                 )) {
-                    Text("System").tag(TranslationBackend.system)
-                    Text("Cloud (占位)").tag(TranslationBackend.cloud)
+                    Text("SiliconFlow").tag(TranslationProvider.siliconFlow)
                 }
 
-                Text("当前 MVP 只实现 System 引擎，Cloud 为后续扩展预留。")
+                TextField("API Key", text: $apiKeyDraft)
+
+                Text("当前版本使用云端翻译（SiliconFlow），后续可扩展更多 Provider。API Key 与其他设置一起保存在本地应用设置中。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Button("保存 API Key") {
+                    model.updateAPIKeyDraft(apiKeyDraft)
+                    model.persistAPIKey()
+                    apiKeyDraft = model.apiKey
+                }
             }
 
             Section("状态") {
@@ -81,5 +89,16 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            apiKeyDraft = model.apiKey
+        }
+        .onDisappear {
+            model.updateAPIKeyDraft(apiKeyDraft)
+            model.persistAPIKey()
+            apiKeyDraft = model.apiKey
+        }
+        .onChange(of: model.settings.translationProvider) { _, _ in
+            apiKeyDraft = model.apiKey
+        }
     }
 }

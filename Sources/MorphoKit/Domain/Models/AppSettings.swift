@@ -32,25 +32,29 @@ public struct AppSettings: Equatable, Sendable {
     public var hotkey: HotkeyShortcut
     public var sourceLanguage: LanguageSource
     public var targetLanguage: Locale.Language
-    public var translationBackend: TranslationBackend
+    public var translationProvider: TranslationProvider
+    public var translationAPIKey: String
 
     public init(
         hotkey: HotkeyShortcut,
         sourceLanguage: LanguageSource,
         targetLanguage: Locale.Language,
-        translationBackend: TranslationBackend
+        translationProvider: TranslationProvider,
+        translationAPIKey: String
     ) {
         self.hotkey = hotkey
         self.sourceLanguage = sourceLanguage
         self.targetLanguage = targetLanguage
-        self.translationBackend = translationBackend
+        self.translationProvider = translationProvider
+        self.translationAPIKey = translationAPIKey
     }
 
     public static let defaultValue = AppSettings(
         hotkey: .defaultValue,
         sourceLanguage: .auto,
         targetLanguage: Locale.Language(identifier: "zh-Hans"),
-        translationBackend: .system
+        translationProvider: .siliconFlow,
+        translationAPIKey: ""
     )
 
     public func withTargetLanguage(_ identifier: String) -> AppSettings {

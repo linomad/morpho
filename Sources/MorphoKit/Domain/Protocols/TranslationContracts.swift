@@ -9,11 +9,16 @@ public protocol TextReplacer {
 }
 
 public protocol TranslationEngine {
-    func translate(_ text: String, source: LanguageSource, target: Locale.Language) async throws -> String
+    func translate(
+        _ text: String,
+        source: LanguageSource,
+        target: Locale.Language,
+        apiKey: String?
+    ) async throws -> String
 }
 
 public protocol TranslationEngineFactoryProtocol {
-    func makeEngine(for backend: TranslationBackend) -> any TranslationEngine
+    func makeEngine(for provider: TranslationProvider) -> any TranslationEngine
 }
 
 public protocol SettingsStore {

@@ -50,10 +50,11 @@ struct MorphoMenuView: View {
 
     private func openSettingsWindow() {
         openSettings()
-        NSApp.activate(ignoringOtherApps: true)
-
-        if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            if let settingsWindow = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeKey }) {
+                settingsWindow.makeKeyAndOrderFront(nil)
+            }
         }
     }
 }
