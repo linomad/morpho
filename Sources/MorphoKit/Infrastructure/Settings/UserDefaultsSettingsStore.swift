@@ -57,7 +57,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             sourceIdentifier = nil
         case .fixed(let language):
             sourceMode = "fixed"
-            sourceIdentifier = language.languageCode?.identifier
+            sourceIdentifier = LanguageIdentifierCodec.persistedIdentifier(for: language)
         }
 
         let persisted = PersistedSettings(
@@ -65,7 +65,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             modifiers: settings.hotkey.modifiers.rawValue,
             sourceMode: sourceMode,
             sourceLanguageIdentifier: sourceIdentifier,
-            targetLanguageIdentifier: settings.targetLanguage.minimalIdentifier,
+            targetLanguageIdentifier: LanguageIdentifierCodec.persistedIdentifier(for: settings.targetLanguage),
             translationBackend: settings.translationBackend.rawValue
         )
 

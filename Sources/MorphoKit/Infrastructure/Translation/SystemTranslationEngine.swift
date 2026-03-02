@@ -12,51 +12,67 @@ public final class SystemTranslationEngine: TranslationEngine {
         }
 
         if #available(macOS 26.0, *) {
+            let resolvedSource = try resolveSourceForInstalledSession(text: normalizedText, source: source)
+            if isSameLanguagePair(source: resolvedSource, target: target) {
+                return normalizedText
+            }
+
+            try await preflightAvailability(source: resolvedSource, target: target)
             return try await translateWithInstalledSession(
                 normalizedText,
-                source: source,
+                source: resolvedSource,
                 target: target
             )
         }
 
-        return try await TranslationTaskBridgeHost.shared.translate(
-            text: normalizedText,
-            source: source,
-            target: target
-        )
+        switch source {
+        case .fixed(let fixed):
+            if isSameLanguagePair(source: fixed, target: target) {
+                return normalizedText
+            }
+
+            try await preflightAvailability(source: fixed, target: target)
+            return try await TranslationTaskBridgeHost.shared.translate(
+                text: normalizedText,
+                source: fixed,
+                target: target
+            )
+
+        case .auto:
+            try await preflightAvailability(text: normalizedText, target: target)
+            return try await TranslationTaskBridgeHost.shared.translate(
+                text: normalizedText,
+                source: nil,
+                target: target
+            )
+        }
     }
 
     @available(macOS 26.0, *)
     private func translateWithInstalledSession(
         _ text: String,
-        source: LanguageSource,
+        source: Locale.Language,
         target: Locale.Language
     ) async throws -> String {
-        guard let resolvedSource = resolveSourceLanguage(for: text, source: source) else {
-            throw TranslationWorkflowError.translationFailed
-        }
-
-        let session = TranslationSession(installedSource: resolvedSource, target: target)
+        let session = TranslationSession(installedSource: source, target: target)
 
         do {
+            try await session.prepareTranslation()
             let response = try await session.translate(text)
             return response.targetText
         } catch let error as TranslationError {
-            switch error {
-            case .unsupportedSourceLanguage,
-                 .unsupportedTargetLanguage,
-                 .unsupportedLanguagePairing,
-                 .notInstalled:
-                throw TranslationWorkflowError.systemTranslatorUnavailable
-            default:
-                throw TranslationWorkflowError.translationFailed
-            }
+            throw TranslationErrorMapper.map(error)
+        } catch is CancellationError {
+            throw TranslationWorkflowError.translationInterrupted
         } catch {
             throw TranslationWorkflowError.translationFailed
         }
     }
 
-    private func resolveSourceLanguage(for text: String, source: LanguageSource) -> Locale.Language? {
+    private func resolveSourceForInstalledSession(
+        text: String,
+        source: LanguageSource
+    ) throws -> Locale.Language {
         switch source {
         case .fixed(let language):
             return language
@@ -65,10 +81,52 @@ public final class SystemTranslationEngine: TranslationEngine {
             recognizer.processString(text)
 
             guard let language = recognizer.dominantLanguage else {
-                return nil
+                throw TranslationWorkflowError.unableToIdentifyLanguage
             }
 
             return Locale.Language(identifier: language.rawValue)
         }
+    }
+
+    private func preflightAvailability(source: Locale.Language, target: Locale.Language) async throws {
+        let availability = LanguageAvailability()
+        let status = await availability.status(from: source, to: target)
+
+        switch status {
+        case .installed:
+            return
+        case .supported:
+            throw TranslationWorkflowError.systemTranslatorUnavailable
+        case .unsupported:
+            throw TranslationWorkflowError.unsupportedLanguagePairing
+        @unknown default:
+            throw TranslationWorkflowError.translationFailed
+        }
+    }
+
+    private func preflightAvailability(text: String, target: Locale.Language) async throws {
+        let availability = LanguageAvailability()
+
+        do {
+            let status = try await availability.status(for: text, to: target)
+            switch status {
+            case .installed:
+                return
+            case .supported:
+                throw TranslationWorkflowError.systemTranslatorUnavailable
+            case .unsupported:
+                throw TranslationWorkflowError.unsupportedLanguagePairing
+            @unknown default:
+                throw TranslationWorkflowError.translationFailed
+            }
+        } catch let error as TranslationError {
+            throw TranslationErrorMapper.map(error)
+        } catch {
+            throw TranslationWorkflowError.translationFailed
+        }
+    }
+
+    private func isSameLanguagePair(source: Locale.Language, target: Locale.Language) -> Bool {
+        source.minimalIdentifier == target.minimalIdentifier
     }
 }

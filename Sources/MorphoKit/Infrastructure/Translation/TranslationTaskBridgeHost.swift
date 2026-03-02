@@ -16,22 +16,19 @@ final class TranslationTaskBridgeHost {
 
     func translate(
         text: String,
-        source: LanguageSource,
+        source: Locale.Language?,
         target: Locale.Language
     ) async throws -> String {
         createWindowIfNeeded()
 
         do {
             return try await coordinator.submit(text: text, source: source, target: target)
+        } catch let error as TranslationWorkflowError {
+            throw error
         } catch let error as TranslationError {
-            switch error {
-            case .unsupportedSourceLanguage,
-                 .unsupportedTargetLanguage,
-                 .unsupportedLanguagePairing:
-                throw TranslationWorkflowError.systemTranslatorUnavailable
-            default:
-                throw TranslationWorkflowError.translationFailed
-            }
+            throw TranslationErrorMapper.map(error)
+        } catch is CancellationError {
+            throw TranslationWorkflowError.translationInterrupted
         } catch {
             throw TranslationWorkflowError.translationFailed
         }
@@ -67,31 +64,62 @@ final class TranslationTaskBridgeHost {
 }
 
 @MainActor
-private final class TranslationTaskCoordinator: ObservableObject {
+final class TranslationTaskCoordinator: ObservableObject {
     @Published var configuration: TranslationSession.Configuration?
 
     private var pendingRequest: PendingRequest?
+    private var isBridgeReady = false
+    private let bridgeReadyTimeoutNanoseconds: UInt64
+    private let requestStartTimeoutNanoseconds: UInt64
+
+    init(
+        bridgeReadyTimeoutNanoseconds: UInt64 = 3_000_000_000,
+        requestStartTimeoutNanoseconds: UInt64 = 3_000_000_000
+    ) {
+        self.bridgeReadyTimeoutNanoseconds = bridgeReadyTimeoutNanoseconds
+        self.requestStartTimeoutNanoseconds = requestStartTimeoutNanoseconds
+    }
+
+    func markBridgeReady() {
+        isBridgeReady = true
+    }
+
+    func markBridgeUnavailable() {
+        isBridgeReady = false
+    }
 
     func submit(
         text: String,
-        source: LanguageSource,
+        source: Locale.Language?,
         target: Locale.Language
     ) async throws -> String {
+        try await waitForBridgeReady()
+
         guard pendingRequest == nil else {
-            throw TranslationWorkflowError.translationFailed
+            throw TranslationWorkflowError.translationInProgress
         }
 
-        let sourceLanguage: Locale.Language?
-        switch source {
-        case .auto:
-            sourceLanguage = nil
-        case .fixed(let fixed):
-            sourceLanguage = fixed
-        }
+        let requestID = UUID()
+        let timeoutNanoseconds = requestStartTimeoutNanoseconds
 
         return try await withCheckedThrowingContinuation { continuation in
-            pendingRequest = PendingRequest(text: text, continuation: continuation)
-            configuration = TranslationSession.Configuration(source: sourceLanguage, target: target)
+            let timeoutTask = Task { [weak self, requestID, timeoutNanoseconds] in
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                self?.failPendingRequestIfNeeded(
+                    id: requestID,
+                    error: TranslationWorkflowError.translationSessionStartupTimeout,
+                    onlyIfNotStarted: true
+                )
+            }
+
+            pendingRequest = PendingRequest(
+                id: requestID,
+                text: text,
+                continuation: continuation,
+                hasStartedProcessing: false,
+                timeoutTask: timeoutTask
+            )
+            configuration = TranslationSession.Configuration(source: source, target: target)
         }
     }
 
@@ -100,15 +128,63 @@ private final class TranslationTaskCoordinator: ObservableObject {
             return
         }
 
-        self.pendingRequest = nil
+        pendingRequest.hasStartedProcessing = true
+        pendingRequest.timeoutTask.cancel()
+
+        defer {
+            self.pendingRequest = nil
+            cleanupConfiguration()
+        }
 
         do {
+            try await session.prepareTranslation()
             let response = try await session.translate(pendingRequest.text)
             pendingRequest.continuation.resume(returning: response.targetText)
+        } catch let error as TranslationError {
+            pendingRequest.continuation.resume(throwing: TranslationErrorMapper.map(error))
+        } catch is CancellationError {
+            pendingRequest.continuation.resume(throwing: TranslationWorkflowError.translationInterrupted)
         } catch {
             pendingRequest.continuation.resume(throwing: error)
         }
+    }
 
+    private func waitForBridgeReady() async throws {
+        guard !isBridgeReady else {
+            return
+        }
+
+        let startedAt = DispatchTime.now().uptimeNanoseconds
+        while !isBridgeReady {
+            let elapsed = DispatchTime.now().uptimeNanoseconds - startedAt
+            if elapsed >= bridgeReadyTimeoutNanoseconds {
+                throw TranslationWorkflowError.translationSessionStartupTimeout
+            }
+
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
+    private func failPendingRequestIfNeeded(
+        id: UUID,
+        error: TranslationWorkflowError,
+        onlyIfNotStarted: Bool
+    ) {
+        guard let pendingRequest, pendingRequest.id == id else {
+            return
+        }
+
+        if onlyIfNotStarted, pendingRequest.hasStartedProcessing {
+            return
+        }
+
+        self.pendingRequest = nil
+        pendingRequest.timeoutTask.cancel()
+        cleanupConfiguration()
+        pendingRequest.continuation.resume(throwing: error)
+    }
+
+    private func cleanupConfiguration() {
         configuration?.invalidate()
         configuration = nil
     }
@@ -123,10 +199,33 @@ private struct TranslationTaskBridgeView: View {
             .translationTask(coordinator.configuration) { session in
                 await coordinator.process(session: session)
             }
+            .onAppear {
+                coordinator.markBridgeReady()
+            }
+            .onDisappear {
+                coordinator.markBridgeUnavailable()
+            }
     }
 }
 
-private struct PendingRequest {
+private final class PendingRequest {
+    let id: UUID
     let text: String
     let continuation: CheckedContinuation<String, Error>
+    var hasStartedProcessing: Bool
+    let timeoutTask: Task<Void, Never>
+
+    init(
+        id: UUID,
+        text: String,
+        continuation: CheckedContinuation<String, Error>,
+        hasStartedProcessing: Bool,
+        timeoutTask: Task<Void, Never>
+    ) {
+        self.id = id
+        self.text = text
+        self.continuation = continuation
+        self.hasStartedProcessing = hasStartedProcessing
+        self.timeoutTask = timeoutTask
+    }
 }

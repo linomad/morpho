@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MorphoMenuView: View {
     @ObservedObject var model: MorphoAppModel
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -22,8 +23,8 @@ struct MorphoMenuView: View {
                 model.triggerTranslation()
             }
 
-            SettingsLink {
-                Text("设置")
+            Button("设置") {
+                openSettingsWindow()
             }
 
             Button("退出 Morpho") {
@@ -44,6 +45,15 @@ struct MorphoMenuView: View {
             return .orange
         case .error:
             return .red
+        }
+    }
+
+    private func openSettingsWindow() {
+        openSettings()
+        NSApp.activate(ignoringOtherApps: true)
+
+        if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
+            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
         }
     }
 }

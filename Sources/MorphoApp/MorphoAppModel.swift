@@ -4,6 +4,8 @@ import MorphoKit
 
 @MainActor
 final class MorphoAppModel: ObservableObject {
+    private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
+
     @Published private(set) var settings: AppSettings
     @Published private(set) var lastStatus: StatusEntry
 
@@ -117,12 +119,18 @@ final class MorphoAppModel: ObservableObject {
         case .auto:
             return "en"
         case .fixed(let language):
-            return language.minimalIdentifier
+            return LanguageIdentifierCodec.displayIdentifier(
+                for: language,
+                supportedIdentifiers: Self.supportedLanguageIdentifiers
+            )
         }
     }
 
     var targetLanguageIdentifier: String {
-        settings.targetLanguage.minimalIdentifier
+        LanguageIdentifierCodec.displayIdentifier(
+            for: settings.targetLanguage,
+            supportedIdentifiers: Self.supportedLanguageIdentifiers
+        )
     }
 
     var hotkeySummary: String {
