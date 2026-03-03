@@ -8,6 +8,8 @@
 
 - 菜单栏常驻应用，无主业务窗口
 - 设置页：快捷键、源语言（支持自动检测）、目标语言、云端 Provider、API Key
+  - 快捷键使用单一录制框，聚焦后按组合键即时更新
+  - API Key 输入后即时生效（无单独保存按钮）
 - 翻译行为：
   - 若存在选中文本，翻译并替换选中
   - 若无选中，翻译并替换全文
@@ -33,6 +35,7 @@
   - 全局热键：`GlobalHotkeyService`
   - 翻译引擎：`CloudTranslationEngine`
   - Provider Client：`SiliconFlowTranslationProviderClient`
+  - 云端重试：`RetryingCloudHTTPClient` + `CloudRetryPolicy`
   - 持久化：`UserDefaultsSettingsStore`（含 API Key）
   - 通知与状态：`UserNotificationStatusReporter`、`StatusCenter`
 - Presentation
@@ -56,6 +59,7 @@
 - 仅云端翻译，不再依赖本地/System 翻译
 - 当前 Provider 为 SiliconFlow（OpenAI-Compatible）
 - Provider 与 Credential 抽象独立，后续可扩展微软等接口
+- 云端请求对 `429/5xx` 启用指数退避重试，并支持 `Retry-After`
 - 不使用剪贴板回退或模拟输入，避免不可控副作用
 - 仅在 AX 失败时启用受控粘贴兜底，且只处理“用户已选中”的文本
 - 不做自动全选，避免篡改用户输入状态

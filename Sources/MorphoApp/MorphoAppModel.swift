@@ -34,8 +34,11 @@ final class MorphoAppModel: ObservableObject {
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
 
         let textGateway = LayeredTextContextGateway()
+        let siliconFlowHTTPClient = RetryingCloudHTTPClient(
+            wrapped: URLSessionCloudHTTPClient()
+        )
         let siliconFlowEngine = CloudTranslationEngine(
-            client: SiliconFlowTranslationProviderClient()
+            client: SiliconFlowTranslationProviderClient(httpClient: siliconFlowHTTPClient)
         )
         let engineFactory = DefaultTranslationEngineFactory(
             siliconFlowEngine: siliconFlowEngine
@@ -83,45 +86,21 @@ final class MorphoAppModel: ObservableObject {
     }
 
     func updateProvider(_ provider: TranslationProvider) {
-        persistAPIKey()
         settings.translationProvider = provider
-        apiKey = settings.translationAPIKey
         persistAndApplySettings()
     }
 
-    func updateAPIKeyDraft(_ value: String) {
+    func updateAPIKey(_ value: String) {
         apiKey = value
-    }
-
-    func persistAPIKey() {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         apiKey = trimmed
         settings.translationAPIKey = trimmed
         persistSettings()
     }
 
-    func updateHotkeyKeyCode(_ keyCode: UInt32) {
-        settings.hotkey = HotkeyShortcut(
-            keyCode: keyCode,
-            modifiers: settings.hotkey.modifiers
-        )
+    func updateHotkeyShortcut(_ shortcut: HotkeyShortcut) {
+        settings.hotkey = shortcut
         persistAndApplySettings()
-    }
-
-    func setModifier(_ modifier: HotkeyModifiers, enabled: Bool) {
-        var modifiers = settings.hotkey.modifiers
-        if enabled {
-            modifiers.insert(modifier)
-        } else {
-            modifiers.remove(modifier)
-        }
-
-        settings.hotkey = HotkeyShortcut(keyCode: settings.hotkey.keyCode, modifiers: modifiers)
-        persistAndApplySettings()
-    }
-
-    func isModifierEnabled(_ modifier: HotkeyModifiers) -> Bool {
-        settings.hotkey.modifiers.contains(modifier)
     }
 
     var sourceLanguageIsAuto: Bool {
@@ -151,13 +130,7 @@ final class MorphoAppModel: ObservableObject {
     }
 
     var hotkeySummary: String {
-        var parts: [String] = []
-        if settings.hotkey.modifiers.contains(.command) { parts.append("⌘") }
-        if settings.hotkey.modifiers.contains(.option) { parts.append("⌥") }
-        if settings.hotkey.modifiers.contains(.control) { parts.append("⌃") }
-        if settings.hotkey.modifiers.contains(.shift) { parts.append("⇧") }
-        parts.append(HotkeyKeyOptions.label(for: settings.hotkey.keyCode))
-        return parts.joined()
+        HotkeyShortcutPresentation.summary(for: settings.hotkey)
     }
 
     private func bindStatus() {
