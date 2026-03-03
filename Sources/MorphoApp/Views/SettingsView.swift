@@ -20,77 +20,34 @@ struct SettingsView: View {
             }
 
             Section("语言") {
-                Toggle("源语言自动检测", isOn: Binding(
-                    get: { model.sourceLanguageIsAuto },
-                    set: { model.updateSourceLanguageMode(isAuto: $0, fixedLanguageIdentifier: model.fixedSourceLanguageIdentifier) }
+                Picker("源语言", selection: Binding(
+                    get: { model.sourceLanguageIdentifier },
+                    set: { model.updateSourceLanguage($0) }
+                ))
+                {
+                    ForEach(LanguageOptions.all) { option in
+                        Text(option.title).tag(option.id)
+                    }
+                }
+
+                Picker("目标语言", selection: Binding(
+                    get: { model.targetLanguageIdentifier },
+                    set: { model.updateTargetLanguage($0) }
+                )) {
+                    ForEach(LanguageOptions.all) { option in
+                        Text(option.title).tag(option.id)
+                    }
+                }
+
+                Toggle("开启自动检测", isOn: Binding(
+                    get: { model.autoDetectEnabled },
+                    set: { model.setAutoDetectEnabled($0) }
                 ))
 
-                if model.sourceLanguageIsAuto {
-                    Toggle("自动检测后在语言对内互译", isOn: Binding(
-                        get: { model.autoSwitchLanguagePairEnabled },
-                        set: { model.setAutoSwitchLanguagePairEnabled($0) }
-                    ))
-
-                    if model.autoSwitchLanguagePairEnabled {
-                        Picker("语言 A", selection: Binding(
-                            get: { model.autoSwitchFirstLanguageIdentifier },
-                            set: {
-                                model.updateAutoSwitchLanguagePair(
-                                    firstLanguageIdentifier: $0,
-                                    secondLanguageIdentifier: model.autoSwitchSecondLanguageIdentifier
-                                )
-                            }
-                        )) {
-                            ForEach(LanguageOptions.all) { option in
-                                Text(option.title).tag(option.id)
-                            }
-                        }
-
-                        Picker("语言 B", selection: Binding(
-                            get: { model.autoSwitchSecondLanguageIdentifier },
-                            set: {
-                                model.updateAutoSwitchLanguagePair(
-                                    firstLanguageIdentifier: model.autoSwitchFirstLanguageIdentifier,
-                                    secondLanguageIdentifier: $0
-                                )
-                            }
-                        )) {
-                            ForEach(LanguageOptions.all) { option in
-                                Text(option.title).tag(option.id)
-                            }
-                        }
-
-                        Text("识别为语言 A 时翻译为语言 B；识别为语言 B 时翻译为语言 A。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Picker("目标语言", selection: Binding(
-                            get: { model.targetLanguageIdentifier },
-                            set: { model.updateTargetLanguage($0) }
-                        )) {
-                            ForEach(LanguageOptions.all) { option in
-                                Text(option.title).tag(option.id)
-                            }
-                        }
-                    }
-                } else {
-                    Picker("源语言", selection: Binding(
-                        get: { model.fixedSourceLanguageIdentifier },
-                        set: { model.updateSourceLanguageMode(isAuto: false, fixedLanguageIdentifier: $0) }
-                    )) {
-                        ForEach(LanguageOptions.all) { option in
-                            Text(option.title).tag(option.id)
-                        }
-                    }
-
-                    Picker("目标语言", selection: Binding(
-                        get: { model.targetLanguageIdentifier },
-                        set: { model.updateTargetLanguage($0) }
-                    )) {
-                        ForEach(LanguageOptions.all) { option in
-                            Text(option.title).tag(option.id)
-                        }
-                    }
+                if model.autoDetectEnabled {
+                    Text("开启后：识别为源语言时翻译为目标语言；识别为目标语言时翻译为源语言。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 

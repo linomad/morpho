@@ -5,10 +5,7 @@ import MorphoKit
 @MainActor
 final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
-    private static let defaultAutoSwitchPair = AutoSwitchLanguagePair(
-        firstLanguage: Locale.Language(identifier: "zh-Hans"),
-        secondLanguage: Locale.Language(identifier: "en")
-    )
+    private static let defaultSourceLanguage = Locale.Language(identifier: "en")
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
@@ -76,17 +73,51 @@ final class MorphoAppModel: ObservableObject {
         }
     }
 
-    func updateTargetLanguage(_ identifier: String) {
-        settings.targetLanguage = Locale.Language(identifier: identifier)
+    func updateSourceLanguage(_ identifier: String) {
+        let language = Locale.Language(identifier: identifier)
+
+        if autoDetectEnabled {
+            settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: language,
+                secondLanguage: resolvedTargetLanguage()
+            )
+        } else {
+            settings.sourceLanguage = .fixed(language)
+        }
+
         persistAndApplySettings()
     }
 
-    func updateSourceLanguageMode(isAuto: Bool, fixedLanguageIdentifier: String) {
-        if isAuto {
-            settings.sourceLanguage = .auto
-        } else {
-            settings.sourceLanguage = .fixed(Locale.Language(identifier: fixedLanguageIdentifier))
+    func updateTargetLanguage(_ identifier: String) {
+        let language = Locale.Language(identifier: identifier)
+        settings.targetLanguage = language
+
+        if autoDetectEnabled {
+            settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: resolvedSourceLanguage(),
+                secondLanguage: language
+            )
         }
+
+        persistAndApplySettings()
+    }
+
+    func setAutoDetectEnabled(_ enabled: Bool) {
+        let sourceLanguage = resolvedSourceLanguage()
+        let targetLanguage = resolvedTargetLanguage()
+
+        if enabled {
+            settings.sourceLanguage = .auto
+            settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: sourceLanguage,
+                secondLanguage: targetLanguage
+            )
+        } else {
+            settings.sourceLanguage = .fixed(sourceLanguage)
+            settings.autoSwitchLanguagePair = nil
+        }
+
+        settings.targetLanguage = targetLanguage
         persistAndApplySettings()
     }
 
@@ -108,95 +139,46 @@ final class MorphoAppModel: ObservableObject {
         persistAndApplySettings()
     }
 
-    var sourceLanguageIsAuto: Bool {
+    var autoDetectEnabled: Bool {
         if case .auto = settings.sourceLanguage {
             return true
         }
         return false
     }
 
-    var fixedSourceLanguageIdentifier: String {
-        switch settings.sourceLanguage {
-        case .auto:
-            return "en"
-        case .fixed(let language):
-            return LanguageIdentifierCodec.displayIdentifier(
-                for: language,
-                supportedIdentifiers: Self.supportedLanguageIdentifiers
-            )
-        }
+    var sourceLanguageIdentifier: String {
+        LanguageIdentifierCodec.displayIdentifier(
+            for: resolvedSourceLanguage(),
+            supportedIdentifiers: Self.supportedLanguageIdentifiers
+        )
     }
 
     var targetLanguageIdentifier: String {
         LanguageIdentifierCodec.displayIdentifier(
-            for: settings.targetLanguage,
+            for: resolvedTargetLanguage(),
             supportedIdentifiers: Self.supportedLanguageIdentifiers
         )
-    }
-
-    var autoSwitchLanguagePairEnabled: Bool {
-        settings.autoSwitchLanguagePair != nil
-    }
-
-    var autoSwitchFirstLanguageIdentifier: String {
-        guard let pair = settings.autoSwitchLanguagePair else {
-            return LanguageIdentifierCodec.displayIdentifier(
-                for: Self.defaultAutoSwitchPair.firstLanguage,
-                supportedIdentifiers: Self.supportedLanguageIdentifiers
-            )
-        }
-
-        return LanguageIdentifierCodec.displayIdentifier(
-            for: pair.firstLanguage,
-            supportedIdentifiers: Self.supportedLanguageIdentifiers
-        )
-    }
-
-    var autoSwitchSecondLanguageIdentifier: String {
-        guard let pair = settings.autoSwitchLanguagePair else {
-            return LanguageIdentifierCodec.displayIdentifier(
-                for: Self.defaultAutoSwitchPair.secondLanguage,
-                supportedIdentifiers: Self.supportedLanguageIdentifiers
-            )
-        }
-
-        return LanguageIdentifierCodec.displayIdentifier(
-            for: pair.secondLanguage,
-            supportedIdentifiers: Self.supportedLanguageIdentifiers
-        )
-    }
-
-    func setAutoSwitchLanguagePairEnabled(_ enabled: Bool) {
-        if enabled {
-            if settings.autoSwitchLanguagePair == nil {
-                settings.autoSwitchLanguagePair = Self.defaultAutoSwitchPair
-            }
-        } else {
-            settings.autoSwitchLanguagePair = nil
-        }
-
-        persistAndApplySettings()
-    }
-
-    func updateAutoSwitchLanguagePair(
-        firstLanguageIdentifier: String,
-        secondLanguageIdentifier: String
-    ) {
-        let firstLanguage = Locale.Language(identifier: firstLanguageIdentifier)
-        let secondLanguage = Locale.Language(identifier: secondLanguageIdentifier)
-        guard firstLanguage.minimalIdentifier != secondLanguage.minimalIdentifier else {
-            return
-        }
-
-        settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
-            firstLanguage: firstLanguage,
-            secondLanguage: secondLanguage
-        )
-        persistAndApplySettings()
     }
 
     var hotkeySummary: String {
         HotkeyShortcutPresentation.summary(for: settings.hotkey)
+    }
+
+    private func resolvedSourceLanguage() -> Locale.Language {
+        if let pair = settings.autoSwitchLanguagePair {
+            return pair.firstLanguage
+        }
+
+        switch settings.sourceLanguage {
+        case .auto:
+            return Self.defaultSourceLanguage
+        case .fixed(let language):
+            return language
+        }
+    }
+
+    private func resolvedTargetLanguage() -> Locale.Language {
+        settings.autoSwitchLanguagePair?.secondLanguage ?? settings.targetLanguage
     }
 
     private func bindStatus() {
