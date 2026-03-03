@@ -11,6 +11,8 @@ public final class UserDefaultsSettingsStore: SettingsStore {
         let sourceMode: String
         let sourceLanguageIdentifier: String?
         let targetLanguageIdentifier: String
+        let autoSwitchPairFirstLanguageIdentifier: String?
+        let autoSwitchPairSecondLanguageIdentifier: String?
         let translationProvider: String?
         let translationAPIKey: String?
         let translationBackend: String?
@@ -39,6 +41,19 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             sourceLanguage = .auto
         }
 
+        let autoSwitchLanguagePair: AutoSwitchLanguagePair?
+        if
+            let firstIdentifier = persisted.autoSwitchPairFirstLanguageIdentifier,
+            let secondIdentifier = persisted.autoSwitchPairSecondLanguageIdentifier
+        {
+            autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: Locale.Language(identifier: firstIdentifier),
+                secondLanguage: Locale.Language(identifier: secondIdentifier)
+            )
+        } else {
+            autoSwitchLanguagePair = nil
+        }
+
         return AppSettings(
             hotkey: HotkeyShortcut(
                 keyCode: persisted.keyCode,
@@ -46,6 +61,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             ),
             sourceLanguage: sourceLanguage,
             targetLanguage: Locale.Language(identifier: persisted.targetLanguageIdentifier),
+            autoSwitchLanguagePair: autoSwitchLanguagePair,
             translationProvider: provider,
             translationAPIKey: persisted.translationAPIKey ?? ""
         )
@@ -64,12 +80,21 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             sourceIdentifier = LanguageIdentifierCodec.persistedIdentifier(for: language)
         }
 
+        let pairFirstIdentifier = settings.autoSwitchLanguagePair.map {
+            LanguageIdentifierCodec.persistedIdentifier(for: $0.firstLanguage)
+        }
+        let pairSecondIdentifier = settings.autoSwitchLanguagePair.map {
+            LanguageIdentifierCodec.persistedIdentifier(for: $0.secondLanguage)
+        }
+
         let persisted = PersistedSettings(
             keyCode: settings.hotkey.keyCode,
             modifiers: settings.hotkey.modifiers.rawValue,
             sourceMode: sourceMode,
             sourceLanguageIdentifier: sourceIdentifier,
             targetLanguageIdentifier: LanguageIdentifierCodec.persistedIdentifier(for: settings.targetLanguage),
+            autoSwitchPairFirstLanguageIdentifier: pairFirstIdentifier,
+            autoSwitchPairSecondLanguageIdentifier: pairSecondIdentifier,
             translationProvider: settings.translationProvider.rawValue,
             translationAPIKey: settings.translationAPIKey,
             translationBackend: nil

@@ -5,6 +5,10 @@ import MorphoKit
 @MainActor
 final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
+    private static let defaultAutoSwitchPair = AutoSwitchLanguagePair(
+        firstLanguage: Locale.Language(identifier: "zh-Hans"),
+        secondLanguage: Locale.Language(identifier: "en")
+    )
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
@@ -50,7 +54,8 @@ final class MorphoAppModel: ObservableObject {
             textReplacer: textGateway,
             settingsStore: settingsStore,
             engineFactory: engineFactory,
-            statusSink: statusReporter
+            statusSink: statusReporter,
+            sourceLanguageDetector: NaturalLanguageSourceLanguageDetector()
         )
 
         do {
@@ -127,6 +132,67 @@ final class MorphoAppModel: ObservableObject {
             for: settings.targetLanguage,
             supportedIdentifiers: Self.supportedLanguageIdentifiers
         )
+    }
+
+    var autoSwitchLanguagePairEnabled: Bool {
+        settings.autoSwitchLanguagePair != nil
+    }
+
+    var autoSwitchFirstLanguageIdentifier: String {
+        guard let pair = settings.autoSwitchLanguagePair else {
+            return LanguageIdentifierCodec.displayIdentifier(
+                for: Self.defaultAutoSwitchPair.firstLanguage,
+                supportedIdentifiers: Self.supportedLanguageIdentifiers
+            )
+        }
+
+        return LanguageIdentifierCodec.displayIdentifier(
+            for: pair.firstLanguage,
+            supportedIdentifiers: Self.supportedLanguageIdentifiers
+        )
+    }
+
+    var autoSwitchSecondLanguageIdentifier: String {
+        guard let pair = settings.autoSwitchLanguagePair else {
+            return LanguageIdentifierCodec.displayIdentifier(
+                for: Self.defaultAutoSwitchPair.secondLanguage,
+                supportedIdentifiers: Self.supportedLanguageIdentifiers
+            )
+        }
+
+        return LanguageIdentifierCodec.displayIdentifier(
+            for: pair.secondLanguage,
+            supportedIdentifiers: Self.supportedLanguageIdentifiers
+        )
+    }
+
+    func setAutoSwitchLanguagePairEnabled(_ enabled: Bool) {
+        if enabled {
+            if settings.autoSwitchLanguagePair == nil {
+                settings.autoSwitchLanguagePair = Self.defaultAutoSwitchPair
+            }
+        } else {
+            settings.autoSwitchLanguagePair = nil
+        }
+
+        persistAndApplySettings()
+    }
+
+    func updateAutoSwitchLanguagePair(
+        firstLanguageIdentifier: String,
+        secondLanguageIdentifier: String
+    ) {
+        let firstLanguage = Locale.Language(identifier: firstLanguageIdentifier)
+        let secondLanguage = Locale.Language(identifier: secondLanguageIdentifier)
+        guard firstLanguage.minimalIdentifier != secondLanguage.minimalIdentifier else {
+            return
+        }
+
+        settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+            firstLanguage: firstLanguage,
+            secondLanguage: secondLanguage
+        )
+        persistAndApplySettings()
     }
 
     var hotkeySummary: String {

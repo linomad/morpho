@@ -99,6 +99,100 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(replacer.lastReplacementMode, .entireField)
     }
 
+    func testExecuteRoutesToPairTargetWhenAutoSourceDetectsFirstLanguage() async {
+        let permission = PermissionStub(isTrusted: true)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: "你好",
+            selectedRange: NSRange(location: 0, length: 2),
+            selectedText: "你好",
+            isSecureField: false
+        )
+
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy()
+        var settings = AppSettings.defaultValue
+        settings.sourceLanguage = .auto
+        settings.targetLanguage = Locale.Language(identifier: "en")
+        settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+            firstLanguage: Locale.Language(identifier: "zh-Hans"),
+            secondLanguage: Locale.Language(identifier: "en")
+        )
+        let settingsStore = SettingsStoreStub(settings: settings)
+        let engine = TranslationEngineStub(translatedText: "hello")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+        let languageDetector = SourceLanguageDetectorStub(
+            detectedLanguage: Locale.Language(identifier: "zh-Hans")
+        )
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink,
+            sourceLanguageDetector: languageDetector
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .success)
+        XCTAssertEqual(engine.lastTargetLanguage?.minimalIdentifier, "en")
+        guard case .fixed(let sourceLanguage) = engine.lastSourceLanguage else {
+            return XCTFail("Expected fixed source language.")
+        }
+        XCTAssertEqual(sourceLanguage.minimalIdentifier, "zh")
+    }
+
+    func testExecuteRoutesToPairTargetWhenAutoSourceDetectsSecondLanguage() async {
+        let permission = PermissionStub(isTrusted: true)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: "hello",
+            selectedRange: NSRange(location: 0, length: 5),
+            selectedText: "hello",
+            isSecureField: false
+        )
+
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy()
+        var settings = AppSettings.defaultValue
+        settings.sourceLanguage = .auto
+        settings.targetLanguage = Locale.Language(identifier: "zh-Hans")
+        settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+            firstLanguage: Locale.Language(identifier: "zh-Hans"),
+            secondLanguage: Locale.Language(identifier: "en")
+        )
+        let settingsStore = SettingsStoreStub(settings: settings)
+        let engine = TranslationEngineStub(translatedText: "你好")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+        let languageDetector = SourceLanguageDetectorStub(
+            detectedLanguage: Locale.Language(identifier: "en")
+        )
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink,
+            sourceLanguageDetector: languageDetector
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .success)
+        XCTAssertEqual(engine.lastTargetLanguage?.minimalIdentifier, "zh")
+        guard case .fixed(let sourceLanguage) = engine.lastSourceLanguage else {
+            return XCTFail("Expected fixed source language.")
+        }
+        XCTAssertEqual(sourceLanguage.minimalIdentifier, "en")
+    }
+
     func testExecuteFailsForSecureField() async {
         let permission = PermissionStub(isTrusted: true)
         let context = TextContext(
@@ -290,6 +384,8 @@ private final class TranslationEngineStub: TranslationEngine {
     private let translatedText: String
     var lastSourceText: String?
     var lastAPIKey: String?
+    var lastSourceLanguage: LanguageSource?
+    var lastTargetLanguage: Locale.Language?
 
     init(translatedText: String = "translated") {
         self.translatedText = translatedText
@@ -302,8 +398,22 @@ private final class TranslationEngineStub: TranslationEngine {
         apiKey: String?
     ) async throws -> String {
         lastSourceText = text
+        lastSourceLanguage = source
+        lastTargetLanguage = target
         lastAPIKey = apiKey
         return translatedText
+    }
+}
+
+private final class SourceLanguageDetectorStub: SourceLanguageDetecting {
+    private let detectedLanguage: Locale.Language?
+
+    init(detectedLanguage: Locale.Language?) {
+        self.detectedLanguage = detectedLanguage
+    }
+
+    func detectLanguage(for text: String) -> Locale.Language? {
+        detectedLanguage
     }
 }
 

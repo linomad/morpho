@@ -33,3 +33,7 @@ public protocol AccessibilityPermissionChecking {
 public protocol StatusReporting {
     func publish(_ entry: StatusEntry)
 }
+
+public protocol SourceLanguageDetecting {
+    func detectLanguage(for text: String) -> Locale.Language?
+}

@@ -14,3 +14,6 @@
 - 2026-03-03: 云端调用重试与退避策略（429/5xx）
   - 通过 `RetryingCloudHTTPClient` 装饰器在基础 HTTP 层实现
   - 指数退避（含 `maxDelay`）+ `Retry-After` 优先
+- 2026-03-03: 自动检测下的双向语言对互译
+  - 在 `AppSettings` 增加可选语言对配置并持久化
+  - UseCase 基于检测结果做 A<->B 方向路由
