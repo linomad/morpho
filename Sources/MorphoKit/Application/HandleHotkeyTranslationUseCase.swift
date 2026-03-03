@@ -7,6 +7,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
     private let settingsStore: SettingsStore
     private let engineFactory: TranslationEngineFactoryProtocol
     private let statusSink: StatusReporting
+    private let sourceLanguageDetector: any SourceLanguageDetecting
 
     public init(
         permissionChecker: AccessibilityPermissionChecking,
@@ -14,7 +15,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         textReplacer: TextReplacer,
         settingsStore: SettingsStore,
         engineFactory: TranslationEngineFactoryProtocol,
-        statusSink: StatusReporting
+        statusSink: StatusReporting,
+        sourceLanguageDetector: any SourceLanguageDetecting = NoopSourceLanguageDetector()
     ) {
         self.permissionChecker = permissionChecker
         self.contextProvider = contextProvider
@@ -22,6 +24,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         self.settingsStore = settingsStore
         self.engineFactory = engineFactory
         self.statusSink = statusSink
+        self.sourceLanguageDetector = sourceLanguageDetector
     }
 
     public func execute() async -> TranslationExecutionResult {
@@ -48,13 +51,14 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
 
         let settings = settingsStore.load()
         let engine = engineFactory.makeEngine(for: settings.translationProvider)
+        let languageRoute = resolveLanguageRoute(for: payload.text, settings: settings)
 
         let translatedText: String
         do {
             translatedText = try await engine.translate(
                 payload.text,
-                source: settings.sourceLanguage,
-                target: settings.targetLanguage,
+                source: languageRoute.source,
+                target: languageRoute.target,
                 apiKey: settings.translationAPIKey
             )
         } catch let error as TranslationWorkflowError {
@@ -95,6 +99,33 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         return (fullText, .entireField)
     }
 
+    private func resolveLanguageRoute(
+        for text: String,
+        settings: AppSettings
+    ) -> (source: LanguageSource, target: Locale.Language) {
+        guard
+            case .auto = settings.sourceLanguage,
+            let pair = settings.autoSwitchLanguagePair,
+            let detectedLanguage = sourceLanguageDetector.detectLanguage(for: text)
+        else {
+            return (settings.sourceLanguage, settings.targetLanguage)
+        }
+
+        let detectedIdentifier = detectedLanguage.minimalIdentifier
+        let firstIdentifier = pair.firstLanguage.minimalIdentifier
+        let secondIdentifier = pair.secondLanguage.minimalIdentifier
+
+        if detectedIdentifier == firstIdentifier {
+            return (.fixed(pair.firstLanguage), pair.secondLanguage)
+        }
+
+        if detectedIdentifier == secondIdentifier {
+            return (.fixed(pair.secondLanguage), pair.firstLanguage)
+        }
+
+        return (settings.sourceLanguage, settings.targetLanguage)
+    }
+
     @discardableResult
     private func fail(
         _ error: TranslationWorkflowError,
@@ -117,5 +148,13 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         default:
             return .error
         }
+    }
+}
+
+public struct NoopSourceLanguageDetector: SourceLanguageDetecting {
+    public init() {}
+
+    public func detectLanguage(for text: String) -> Locale.Language? {
+        nil
     }
 }

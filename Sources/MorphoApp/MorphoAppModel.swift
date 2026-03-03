@@ -5,6 +5,7 @@ import MorphoKit
 @MainActor
 final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
+    private static let defaultSourceLanguage = Locale.Language(identifier: "en")
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
@@ -34,8 +35,11 @@ final class MorphoAppModel: ObservableObject {
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
 
         let textGateway = LayeredTextContextGateway()
+        let siliconFlowHTTPClient = RetryingCloudHTTPClient(
+            wrapped: URLSessionCloudHTTPClient()
+        )
         let siliconFlowEngine = CloudTranslationEngine(
-            client: SiliconFlowTranslationProviderClient()
+            client: SiliconFlowTranslationProviderClient(httpClient: siliconFlowHTTPClient)
         )
         let engineFactory = DefaultTranslationEngineFactory(
             siliconFlowEngine: siliconFlowEngine
@@ -47,7 +51,8 @@ final class MorphoAppModel: ObservableObject {
             textReplacer: textGateway,
             settingsStore: settingsStore,
             engineFactory: engineFactory,
-            statusSink: statusReporter
+            statusSink: statusReporter,
+            sourceLanguageDetector: NaturalLanguageSourceLanguageDetector()
         )
 
         do {
@@ -68,96 +73,112 @@ final class MorphoAppModel: ObservableObject {
         }
     }
 
-    func updateTargetLanguage(_ identifier: String) {
-        settings.targetLanguage = Locale.Language(identifier: identifier)
+    func updateSourceLanguage(_ identifier: String) {
+        let language = Locale.Language(identifier: identifier)
+
+        if autoDetectEnabled {
+            settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: language,
+                secondLanguage: resolvedTargetLanguage()
+            )
+        } else {
+            settings.sourceLanguage = .fixed(language)
+        }
+
         persistAndApplySettings()
     }
 
-    func updateSourceLanguageMode(isAuto: Bool, fixedLanguageIdentifier: String) {
-        if isAuto {
-            settings.sourceLanguage = .auto
-        } else {
-            settings.sourceLanguage = .fixed(Locale.Language(identifier: fixedLanguageIdentifier))
+    func updateTargetLanguage(_ identifier: String) {
+        let language = Locale.Language(identifier: identifier)
+        settings.targetLanguage = language
+
+        if autoDetectEnabled {
+            settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: resolvedSourceLanguage(),
+                secondLanguage: language
+            )
         }
+
+        persistAndApplySettings()
+    }
+
+    func setAutoDetectEnabled(_ enabled: Bool) {
+        let sourceLanguage = resolvedSourceLanguage()
+        let targetLanguage = resolvedTargetLanguage()
+
+        if enabled {
+            settings.sourceLanguage = .auto
+            settings.autoSwitchLanguagePair = AutoSwitchLanguagePair(
+                firstLanguage: sourceLanguage,
+                secondLanguage: targetLanguage
+            )
+        } else {
+            settings.sourceLanguage = .fixed(sourceLanguage)
+            settings.autoSwitchLanguagePair = nil
+        }
+
+        settings.targetLanguage = targetLanguage
         persistAndApplySettings()
     }
 
     func updateProvider(_ provider: TranslationProvider) {
-        persistAPIKey()
         settings.translationProvider = provider
-        apiKey = settings.translationAPIKey
         persistAndApplySettings()
     }
 
-    func updateAPIKeyDraft(_ value: String) {
+    func updateAPIKey(_ value: String) {
         apiKey = value
-    }
-
-    func persistAPIKey() {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         apiKey = trimmed
         settings.translationAPIKey = trimmed
         persistSettings()
     }
 
-    func updateHotkeyKeyCode(_ keyCode: UInt32) {
-        settings.hotkey = HotkeyShortcut(
-            keyCode: keyCode,
-            modifiers: settings.hotkey.modifiers
-        )
+    func updateHotkeyShortcut(_ shortcut: HotkeyShortcut) {
+        settings.hotkey = shortcut
         persistAndApplySettings()
     }
 
-    func setModifier(_ modifier: HotkeyModifiers, enabled: Bool) {
-        var modifiers = settings.hotkey.modifiers
-        if enabled {
-            modifiers.insert(modifier)
-        } else {
-            modifiers.remove(modifier)
-        }
-
-        settings.hotkey = HotkeyShortcut(keyCode: settings.hotkey.keyCode, modifiers: modifiers)
-        persistAndApplySettings()
-    }
-
-    func isModifierEnabled(_ modifier: HotkeyModifiers) -> Bool {
-        settings.hotkey.modifiers.contains(modifier)
-    }
-
-    var sourceLanguageIsAuto: Bool {
+    var autoDetectEnabled: Bool {
         if case .auto = settings.sourceLanguage {
             return true
         }
         return false
     }
 
-    var fixedSourceLanguageIdentifier: String {
-        switch settings.sourceLanguage {
-        case .auto:
-            return "en"
-        case .fixed(let language):
-            return LanguageIdentifierCodec.displayIdentifier(
-                for: language,
-                supportedIdentifiers: Self.supportedLanguageIdentifiers
-            )
-        }
+    var sourceLanguageIdentifier: String {
+        LanguageIdentifierCodec.displayIdentifier(
+            for: resolvedSourceLanguage(),
+            supportedIdentifiers: Self.supportedLanguageIdentifiers
+        )
     }
 
     var targetLanguageIdentifier: String {
         LanguageIdentifierCodec.displayIdentifier(
-            for: settings.targetLanguage,
+            for: resolvedTargetLanguage(),
             supportedIdentifiers: Self.supportedLanguageIdentifiers
         )
     }
 
     var hotkeySummary: String {
-        var parts: [String] = []
-        if settings.hotkey.modifiers.contains(.command) { parts.append("⌘") }
-        if settings.hotkey.modifiers.contains(.option) { parts.append("⌥") }
-        if settings.hotkey.modifiers.contains(.control) { parts.append("⌃") }
-        if settings.hotkey.modifiers.contains(.shift) { parts.append("⇧") }
-        parts.append(HotkeyKeyOptions.label(for: settings.hotkey.keyCode))
-        return parts.joined()
+        HotkeyShortcutPresentation.summary(for: settings.hotkey)
+    }
+
+    private func resolvedSourceLanguage() -> Locale.Language {
+        if let pair = settings.autoSwitchLanguagePair {
+            return pair.firstLanguage
+        }
+
+        switch settings.sourceLanguage {
+        case .auto:
+            return Self.defaultSourceLanguage
+        case .fixed(let language):
+            return language
+        }
+    }
+
+    private func resolvedTargetLanguage() -> Locale.Language {
+        settings.autoSwitchLanguagePair?.secondLanguage ?? settings.targetLanguage
     }
 
     private func bindStatus() {

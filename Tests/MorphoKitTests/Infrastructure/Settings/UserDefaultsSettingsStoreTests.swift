@@ -73,6 +73,28 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         XCTAssertEqual(loaded.translationProvider, .siliconFlow)
     }
 
+    func testSaveAndLoadPreservesAutoSwitchLanguagePair() {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+        let settings = AppSettings(
+            hotkey: .defaultValue,
+            sourceLanguage: .auto,
+            targetLanguage: Locale.Language(identifier: "zh-Hans"),
+            autoSwitchLanguagePair: AutoSwitchLanguagePair(
+                firstLanguage: Locale.Language(identifier: "zh-Hans"),
+                secondLanguage: Locale.Language(identifier: "en")
+            ),
+            translationProvider: .siliconFlow,
+            translationAPIKey: "sk-test-pair"
+        )
+
+        store.save(settings)
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.autoSwitchLanguagePair?.firstLanguage.minimalIdentifier, "zh")
+        XCTAssertEqual(loaded.autoSwitchLanguagePair?.secondLanguage.minimalIdentifier, "en")
+    }
+
     private func makeIsolatedDefaults() -> UserDefaults {
         let suiteName = "morpho.tests.settings.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard

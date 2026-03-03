@@ -28,10 +28,21 @@ public struct HotkeyShortcut: Equatable, Sendable {
     )
 }
 
+public struct AutoSwitchLanguagePair: Equatable, Sendable {
+    public var firstLanguage: Locale.Language
+    public var secondLanguage: Locale.Language
+
+    public init(firstLanguage: Locale.Language, secondLanguage: Locale.Language) {
+        self.firstLanguage = firstLanguage
+        self.secondLanguage = secondLanguage
+    }
+}
+
 public struct AppSettings: Equatable, Sendable {
     public var hotkey: HotkeyShortcut
     public var sourceLanguage: LanguageSource
     public var targetLanguage: Locale.Language
+    public var autoSwitchLanguagePair: AutoSwitchLanguagePair?
     public var translationProvider: TranslationProvider
     public var translationAPIKey: String
 
@@ -39,12 +50,14 @@ public struct AppSettings: Equatable, Sendable {
         hotkey: HotkeyShortcut,
         sourceLanguage: LanguageSource,
         targetLanguage: Locale.Language,
+        autoSwitchLanguagePair: AutoSwitchLanguagePair? = nil,
         translationProvider: TranslationProvider,
         translationAPIKey: String
     ) {
         self.hotkey = hotkey
         self.sourceLanguage = sourceLanguage
         self.targetLanguage = targetLanguage
+        self.autoSwitchLanguagePair = autoSwitchLanguagePair
         self.translationProvider = translationProvider
         self.translationAPIKey = translationAPIKey
     }

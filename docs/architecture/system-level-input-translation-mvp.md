@@ -7,7 +7,10 @@
 ## Product Scope (MVP)
 
 - 菜单栏常驻应用，无主业务窗口
-- 设置页：快捷键、源语言（支持自动检测）、目标语言、云端 Provider、API Key
+- 设置页：快捷键、源语言、目标语言、自动检测开关、云端 Provider、API Key
+  - 快捷键使用单一录制框，聚焦后按组合键即时更新
+  - API Key 输入后即时生效（无单独保存按钮）
+  - 自动检测开启后：识别为源语言则翻译为目标语言；识别为目标语言则翻译为源语言
 - 翻译行为：
   - 若存在选中文本，翻译并替换选中
   - 若无选中，翻译并替换全文
@@ -24,7 +27,7 @@
   - 协议：`TextContextProvider`、`TextReplacer`、`TranslationEngine`、`SettingsStore`
 - Application
   - 用例：`HandleHotkeyTranslationUseCase`
-  - 负责权限检查、文本决策、翻译调用、结果写回、状态上报
+  - 负责权限检查、文本决策、语言方向路由、翻译调用、结果写回、状态上报
 - Infrastructure
   - 分层输入网关：`LayeredTextContextGateway`
   - AX 主通道：`AXTextContextGateway`
@@ -32,7 +35,9 @@
   - 基础注入：`KeyboardEventInjecting`、`PasteboardAccessing`
   - 全局热键：`GlobalHotkeyService`
   - 翻译引擎：`CloudTranslationEngine`
+  - 语言检测：`NaturalLanguageSourceLanguageDetector`
   - Provider Client：`SiliconFlowTranslationProviderClient`
+  - 云端重试：`RetryingCloudHTTPClient` + `CloudRetryPolicy`
   - 持久化：`UserDefaultsSettingsStore`（含 API Key）
   - 通知与状态：`UserNotificationStatusReporter`、`StatusCenter`
 - Presentation
@@ -56,6 +61,7 @@
 - 仅云端翻译，不再依赖本地/System 翻译
 - 当前 Provider 为 SiliconFlow（OpenAI-Compatible）
 - Provider 与 Credential 抽象独立，后续可扩展微软等接口
+- 云端请求对 `429/5xx` 启用指数退避重试，并支持 `Retry-After`
 - 不使用剪贴板回退或模拟输入，避免不可控副作用
 - 仅在 AX 失败时启用受控粘贴兜底，且只处理“用户已选中”的文本
 - 不做自动全选，避免篡改用户输入状态
