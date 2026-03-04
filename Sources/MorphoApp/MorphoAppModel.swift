@@ -6,24 +6,17 @@ import MorphoKit
 final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
     private static let defaultSourceLanguage = Locale.Language(identifier: "en")
-    private static let terminalIconDisplayDurationNanoseconds: UInt64 = 3_000_000_000
 
     private enum MenuBarIconState {
         case idle
         case running
-        case success
-        case failure
 
         var systemImage: String {
             switch self {
             case .idle:
-                return "translate"
+                return "dot.square.fill"
             case .running:
-                return "hourglass.circle"
-            case .success:
-                return "checkmark.circle"
-            case .failure:
-                return "xmark.circle"
+                return "dot.square"
             }
         }
     }
@@ -40,9 +33,7 @@ final class MorphoAppModel: ObservableObject {
     private let hotkeyService: GlobalHotkeyService?
 
     private var cancellables: Set<AnyCancellable> = []
-    private var menuBarIconState: MenuBarIconState = .idle
     private var inFlightTranslationTask: Task<Void, Never>?
-    private var terminalStateResetTask: Task<Void, Never>?
 
     init() {
         let settingsStore = UserDefaultsSettingsStore()
@@ -98,7 +89,6 @@ final class MorphoAppModel: ObservableObject {
             return
         }
 
-        cancelTerminalStateResetTask()
         updateMenuBarIconState(.running)
 
         inFlightTranslationTask = Task { [weak self] in
@@ -106,8 +96,8 @@ final class MorphoAppModel: ObservableObject {
                 return
             }
 
-            let result = await self.useCase.execute()
-            self.handleTranslationCompletion(result)
+            _ = await self.useCase.execute()
+            self.handleTranslationCompletion()
         }
     }
 
@@ -287,49 +277,12 @@ final class MorphoAppModel: ObservableObject {
         }
     }
 
-    private func handleTranslationCompletion(_ result: TranslationExecutionResult) {
+    private func handleTranslationCompletion() {
         inFlightTranslationTask = nil
-
-        switch result {
-        case .success:
-            updateMenuBarIconState(.success)
-        case .failure:
-            updateMenuBarIconState(.failure)
-        }
-
-        scheduleTerminalStateReset()
+        updateMenuBarIconState(.idle)
     }
 
     private func updateMenuBarIconState(_ state: MenuBarIconState) {
-        menuBarIconState = state
         menuBarIconSystemImage = state.systemImage
-    }
-
-    private func scheduleTerminalStateReset() {
-        cancelTerminalStateResetTask()
-
-        terminalStateResetTask = Task { [weak self] in
-            do {
-                try await Task.sleep(nanoseconds: Self.terminalIconDisplayDurationNanoseconds)
-            } catch {
-                return
-            }
-
-            self?.resetToIdleIconIfPossible()
-        }
-    }
-
-    private func resetToIdleIconIfPossible() {
-        guard inFlightTranslationTask == nil else {
-            return
-        }
-
-        updateMenuBarIconState(.idle)
-        terminalStateResetTask = nil
-    }
-
-    private func cancelTerminalStateResetTask() {
-        terminalStateResetTask?.cancel()
-        terminalStateResetTask = nil
     }
 }
