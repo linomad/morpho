@@ -6,10 +6,32 @@ import MorphoKit
 final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
     private static let defaultSourceLanguage = Locale.Language(identifier: "en")
+    private static let terminalIconDisplayDurationNanoseconds: UInt64 = 3_000_000_000
+
+    private enum MenuBarIconState {
+        case idle
+        case running
+        case success
+        case failure
+
+        var systemImage: String {
+            switch self {
+            case .idle:
+                return "translate"
+            case .running:
+                return "hourglass.circle"
+            case .success:
+                return "checkmark.circle"
+            case .failure:
+                return "xmark.circle"
+            }
+        }
+    }
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
     @Published private(set) var lastStatus: StatusEntry
+    @Published private(set) var menuBarIconSystemImage: String
 
     private let settingsStore: SettingsStore
     private let statusCenter: StatusCenter
@@ -18,6 +40,9 @@ final class MorphoAppModel: ObservableObject {
     private let hotkeyService: GlobalHotkeyService?
 
     private var cancellables: Set<AnyCancellable> = []
+    private var menuBarIconState: MenuBarIconState = .idle
+    private var inFlightTranslationTask: Task<Void, Never>?
+    private var terminalStateResetTask: Task<Void, Never>?
 
     init() {
         let settingsStore = UserDefaultsSettingsStore()
@@ -33,6 +58,7 @@ final class MorphoAppModel: ObservableObject {
         self.statusCenter = statusCenter
         self.statusReporter = statusReporter
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
+        self.menuBarIconSystemImage = MenuBarIconState.idle.systemImage
 
         let textGateway = LayeredTextContextGateway()
         let siliconFlowHTTPClient = RetryingCloudHTTPClient(
@@ -68,8 +94,20 @@ final class MorphoAppModel: ObservableObject {
     }
 
     func triggerTranslation() {
-        Task {
-            _ = await useCase.execute()
+        guard inFlightTranslationTask == nil else {
+            return
+        }
+
+        cancelTerminalStateResetTask()
+        updateMenuBarIconState(.running)
+
+        inFlightTranslationTask = Task { [weak self] in
+            guard let self else {
+                return
+            }
+
+            let result = await self.useCase.execute()
+            self.handleTranslationCompletion(result)
         }
     }
 
@@ -247,5 +285,51 @@ final class MorphoAppModel: ObservableObject {
                 )
             )
         }
+    }
+
+    private func handleTranslationCompletion(_ result: TranslationExecutionResult) {
+        inFlightTranslationTask = nil
+
+        switch result {
+        case .success:
+            updateMenuBarIconState(.success)
+        case .failure:
+            updateMenuBarIconState(.failure)
+        }
+
+        scheduleTerminalStateReset()
+    }
+
+    private func updateMenuBarIconState(_ state: MenuBarIconState) {
+        menuBarIconState = state
+        menuBarIconSystemImage = state.systemImage
+    }
+
+    private func scheduleTerminalStateReset() {
+        cancelTerminalStateResetTask()
+
+        terminalStateResetTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: Self.terminalIconDisplayDurationNanoseconds)
+            } catch {
+                return
+            }
+
+            self?.resetToIdleIconIfPossible()
+        }
+    }
+
+    private func resetToIdleIconIfPossible() {
+        guard inFlightTranslationTask == nil else {
+            return
+        }
+
+        updateMenuBarIconState(.idle)
+        terminalStateResetTask = nil
+    }
+
+    private func cancelTerminalStateResetTask() {
+        terminalStateResetTask?.cancel()
+        terminalStateResetTask = nil
     }
 }

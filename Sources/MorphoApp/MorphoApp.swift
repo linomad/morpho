@@ -5,7 +5,7 @@ struct MorphoApp: App {
     @StateObject private var model = MorphoAppModel()
 
     var body: some Scene {
-        MenuBarExtra("Morpho", systemImage: "globe") {
+        MenuBarExtra("Morpho", systemImage: model.menuBarIconSystemImage) {
             MorphoMenuView(model: model)
         }
 
