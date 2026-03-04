@@ -11,7 +11,7 @@ struct MorphoMenuView: View {
             Text("Morpho")
                 .font(.headline)
 
-            Text("快捷键: \(model.hotkeySummary)")
+            Text("快捷键: \(model.hotkeySummaryForMenu)")
                 .font(.subheadline)
 
             Text(model.lastStatus.message)

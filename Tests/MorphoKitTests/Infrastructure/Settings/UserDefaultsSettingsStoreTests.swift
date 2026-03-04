@@ -73,6 +73,24 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         XCTAssertEqual(loaded.translationProvider, .siliconFlow)
     }
 
+    func testLoadDefaultsHotkeyEnabledForLegacyPayloadWithoutFlag() throws {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+
+        let legacyPayload: [String: Any] = [
+            "keyCode": 17,
+            "modifiers": 0,
+            "sourceMode": "auto",
+            "targetLanguageIdentifier": Locale.Language(identifier: "zh-Hans").maximalIdentifier,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: legacyPayload)
+        defaults.set(data, forKey: "morpho.app.settings")
+
+        let loaded = store.load()
+
+        XCTAssertTrue(loaded.isHotkeyEnabled)
+    }
+
     func testSaveAndLoadPreservesAutoSwitchLanguagePair() {
         let defaults = makeIsolatedDefaults()
         let store = UserDefaultsSettingsStore(defaults: defaults)
@@ -93,6 +111,32 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded.autoSwitchLanguagePair?.firstLanguage.minimalIdentifier, "zh")
         XCTAssertEqual(loaded.autoSwitchLanguagePair?.secondLanguage.minimalIdentifier, "en")
+    }
+
+    func testSaveAndLoadPreservesHotkeyEnabledFlag() throws {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+        let settings = AppSettings(
+            hotkey: .defaultValue,
+            isHotkeyEnabled: false,
+            sourceLanguage: .auto,
+            targetLanguage: Locale.Language(identifier: "en"),
+            translationProvider: .siliconFlow,
+            translationAPIKey: "sk-test-hotkey-enabled"
+        )
+
+        store.save(settings)
+        let loaded = store.load()
+
+        XCTAssertFalse(loaded.isHotkeyEnabled)
+
+        guard let data = defaults.data(forKey: "morpho.app.settings") else {
+            XCTFail("Expected persisted settings data.")
+            return
+        }
+
+        let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(raw["isHotkeyEnabled"] as? Bool, false)
     }
 
     private func makeIsolatedDefaults() -> UserDefaults {

@@ -8,6 +8,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
     private struct PersistedSettings: Codable {
         let keyCode: UInt32
         let modifiers: UInt8
+        let isHotkeyEnabled: Bool?
         let sourceMode: String
         let sourceLanguageIdentifier: String?
         let targetLanguageIdentifier: String
@@ -59,6 +60,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
                 keyCode: persisted.keyCode,
                 modifiers: HotkeyModifiers(rawValue: persisted.modifiers)
             ),
+            isHotkeyEnabled: persisted.isHotkeyEnabled ?? true,
             sourceLanguage: sourceLanguage,
             targetLanguage: Locale.Language(identifier: persisted.targetLanguageIdentifier),
             autoSwitchLanguagePair: autoSwitchLanguagePair,
@@ -90,6 +92,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
         let persisted = PersistedSettings(
             keyCode: settings.hotkey.keyCode,
             modifiers: settings.hotkey.modifiers.rawValue,
+            isHotkeyEnabled: settings.isHotkeyEnabled,
             sourceMode: sourceMode,
             sourceLanguageIdentifier: sourceIdentifier,
             targetLanguageIdentifier: LanguageIdentifierCodec.persistedIdentifier(for: settings.targetLanguage),

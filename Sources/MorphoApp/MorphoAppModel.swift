@@ -139,6 +139,11 @@ final class MorphoAppModel: ObservableObject {
         persistAndApplySettings()
     }
 
+    func setHotkeyEnabled(_ enabled: Bool) {
+        settings.isHotkeyEnabled = enabled
+        persistAndApplySettings()
+    }
+
     var autoDetectEnabled: Bool {
         if case .auto = settings.sourceLanguage {
             return true
@@ -162,6 +167,14 @@ final class MorphoAppModel: ObservableObject {
 
     var hotkeySummary: String {
         HotkeyShortcutPresentation.summary(for: settings.hotkey)
+    }
+
+    var hotkeySummaryForMenu: String {
+        hotkeyEnabled ? hotkeySummary : "已关闭"
+    }
+
+    var hotkeyEnabled: Bool {
+        settings.isHotkeyEnabled
     }
 
     private func resolvedSourceLanguage() -> Locale.Language {
@@ -209,6 +222,11 @@ final class MorphoAppModel: ObservableObject {
     }
 
     private func registerHotkeyIfPossible() {
+        if !settings.isHotkeyEnabled {
+            hotkeyService?.unregister()
+            return
+        }
+
         guard let hotkeyService else {
             statusReporter.publish(
                 StatusEntry(

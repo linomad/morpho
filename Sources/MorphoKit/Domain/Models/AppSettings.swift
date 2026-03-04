@@ -40,6 +40,7 @@ public struct AutoSwitchLanguagePair: Equatable, Sendable {
 
 public struct AppSettings: Equatable, Sendable {
     public var hotkey: HotkeyShortcut
+    public var isHotkeyEnabled: Bool
     public var sourceLanguage: LanguageSource
     public var targetLanguage: Locale.Language
     public var autoSwitchLanguagePair: AutoSwitchLanguagePair?
@@ -48,6 +49,7 @@ public struct AppSettings: Equatable, Sendable {
 
     public init(
         hotkey: HotkeyShortcut,
+        isHotkeyEnabled: Bool = true,
         sourceLanguage: LanguageSource,
         targetLanguage: Locale.Language,
         autoSwitchLanguagePair: AutoSwitchLanguagePair? = nil,
@@ -55,6 +57,7 @@ public struct AppSettings: Equatable, Sendable {
         translationAPIKey: String
     ) {
         self.hotkey = hotkey
+        self.isHotkeyEnabled = isHotkeyEnabled
         self.sourceLanguage = sourceLanguage
         self.targetLanguage = targetLanguage
         self.autoSwitchLanguagePair = autoSwitchLanguagePair
@@ -64,6 +67,7 @@ public struct AppSettings: Equatable, Sendable {
 
     public static let defaultValue = AppSettings(
         hotkey: .defaultValue,
+        isHotkeyEnabled: true,
         sourceLanguage: .auto,
         targetLanguage: Locale.Language(identifier: "zh-Hans"),
         translationProvider: .siliconFlow,

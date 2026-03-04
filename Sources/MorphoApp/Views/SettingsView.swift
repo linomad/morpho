@@ -1,25 +1,48 @@
+import AppKit
 import MorphoKit
 import SwiftUI
 
 struct SettingsView: View {
+    private enum Layout {
+        static let inputHeight: CGFloat = 38
+        static let inputCornerRadius: CGFloat = 10
+        static let hotkeyDisplayWidth: CGFloat = 180
+    }
+
     @ObservedObject var model: MorphoAppModel
     @State private var apiKeyDraft = ""
+    @FocusState private var isAPIKeyFieldFocused: Bool
 
     var body: some View {
         Form {
-            Section("快捷键") {
-                HotkeyRecorderField(
-                    shortcut: model.settings.hotkey,
-                    onShortcutChange: { model.updateHotkeyShortcut($0) }
-                )
-                .frame(height: 28)
+            Section {
+                Toggle("启用快捷键", isOn: Binding(
+                    get: { model.hotkeyEnabled },
+                    set: { model.setHotkeyEnabled($0) }
+                ))
 
-                Text("点击上方输入框后直接按下组合键，设置会立即生效。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if model.hotkeyEnabled {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("快捷键")
+
+                        Spacer(minLength: 12)
+
+                        HotkeyRecorderField(
+                            shortcut: model.settings.hotkey,
+                            isEnabled: model.hotkeyEnabled,
+                            onShortcutChange: { model.updateHotkeyShortcut($0) }
+                        )
+                        .frame(width: Layout.hotkeyDisplayWidth, height: Layout.inputHeight)
+                    }
+                    .frame(height: Layout.inputHeight, alignment: .center)
+                }
+            } header: {
+                Text("快捷键")
+            } footer: {
+                Text(model.hotkeyEnabled ? "点击右侧输入框后按下组合键，设置会立即生效。" : "启用后可设置快捷键。")
             }
 
-            Section("语言") {
+            Section {
                 Picker("源语言", selection: Binding(
                     get: { model.sourceLanguageIdentifier },
                     set: { model.updateSourceLanguage($0) }
@@ -43,15 +66,15 @@ struct SettingsView: View {
                     get: { model.autoDetectEnabled },
                     set: { model.setAutoDetectEnabled($0) }
                 ))
-
+            } header: {
+                Text("语言")
+            } footer: {
                 if model.autoDetectEnabled {
                     Text("开启后：识别为源语言时翻译为目标语言；识别为目标语言时翻译为源语言。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
 
-            Section("翻译引擎") {
+            Section {
                 Picker("Provider", selection: Binding(
                     get: { model.settings.translationProvider },
                     set: { model.updateProvider($0) }
@@ -59,12 +82,36 @@ struct SettingsView: View {
                     Text("SiliconFlow").tag(TranslationProvider.siliconFlow)
                 }
 
-                TextField("API Key", text: $apiKeyDraft)
-                    .textFieldStyle(.roundedBorder)
-
+                LabeledContent("API Key") {
+                    TextField("输入 SiliconFlow API Key", text: $apiKeyDraft)
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
+                        .focused($isAPIKeyFieldFocused)
+                        .padding(.horizontal, 12)
+                        .frame(height: Layout.inputHeight)
+                        .background(
+                            RoundedRectangle(cornerRadius: Layout.inputCornerRadius, style: .continuous)
+                                .fill(Color(nsColor: .textBackgroundColor))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Layout.inputCornerRadius, style: .continuous)
+                                .strokeBorder(
+                                    isAPIKeyFieldFocused ? Color(nsColor: .controlAccentColor) : Color(nsColor: .separatorColor),
+                                    lineWidth: isAPIKeyFieldFocused ? 1.5 : 1
+                                )
+                        )
+                        .shadow(
+                            color: isAPIKeyFieldFocused ? Color(nsColor: .controlAccentColor).opacity(0.18) : .clear,
+                            radius: 3,
+                            y: 1
+                        )
+                        .frame(minWidth: 220, maxWidth: .infinity, alignment: .trailing)
+                }
+            } header: {
+                Text("翻译引擎")
+            } footer: {
                 Text("当前版本使用云端翻译（SiliconFlow），后续可扩展更多 Provider。API Key 输入后会立即保存在本地应用设置中。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("状态") {
@@ -73,6 +120,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .controlSize(.regular)
         .onAppear {
             apiKeyDraft = model.apiKey
         }

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct HotkeyRecorderField: NSViewRepresentable {
     let shortcut: HotkeyShortcut
+    let isEnabled: Bool
     let onShortcutChange: (HotkeyShortcut) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -12,22 +13,16 @@ struct HotkeyRecorderField: NSViewRepresentable {
 
     func makeNSView(context: Context) -> HotkeyRecorderTextField {
         let textField = HotkeyRecorderTextField()
-        textField.placeholderString = "点击后按下组合键"
-        textField.alignment = .center
-        textField.isEditable = false
-        textField.isSelectable = false
-        textField.isBordered = true
-        textField.drawsBackground = true
-        textField.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
-        textField.focusRingType = .default
         textField.onShortcutCaptured = context.coordinator.handleShortcut
-        textField.stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+        textField.shortcut = shortcut
+        textField.isShortcutEnabled = isEnabled
         return textField
     }
 
     func updateNSView(_ nsView: HotkeyRecorderTextField, context: Context) {
         nsView.onShortcutCaptured = context.coordinator.handleShortcut
-        nsView.stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+        nsView.shortcut = shortcut
+        nsView.isShortcutEnabled = isEnabled
     }
 
     final class Coordinator {
@@ -44,33 +39,186 @@ struct HotkeyRecorderField: NSViewRepresentable {
 }
 
 final class HotkeyRecorderTextField: NSTextField {
+    private enum Appearance {
+        static let cornerRadius: CGFloat = 10
+        static let normalBorderWidth: CGFloat = 1
+        static let focusedBorderWidth: CGFloat = 1.5
+        static let focusedShadowRadius: CGFloat = 3
+    }
+
     var onShortcutCaptured: ((HotkeyShortcut) -> Void)?
+    var shortcut: HotkeyShortcut = .defaultValue {
+        didSet {
+            if !isRecording {
+                stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+            }
+        }
+    }
+
+    var isShortcutEnabled = true {
+        didSet {
+            if !isShortcutEnabled {
+                stopRecording(resignFirstResponder: true)
+            }
+
+            if !isRecording {
+                stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+            }
+            updateVisualStyle()
+        }
+    }
+
+    private var isRecording = false {
+        didSet {
+            stringValue = isRecording ? "按下新组合键" : HotkeyShortcutPresentation.summary(for: shortcut)
+            updateVisualStyle()
+        }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configureAppearance()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configureAppearance()
+    }
 
     override var acceptsFirstResponder: Bool {
         true
     }
 
+    override func becomeFirstResponder() -> Bool {
+        super.becomeFirstResponder()
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let didResign = super.resignFirstResponder()
+        if didResign, isRecording {
+            stopRecording(resignFirstResponder: false)
+        }
+        return didResign
+    }
+
     override func mouseDown(with event: NSEvent) {
-        window?.makeFirstResponder(self)
+        guard isShortcutEnabled else {
+            return
+        }
+        startRecording()
     }
 
     override func keyDown(with event: NSEvent) {
+        guard isRecording else {
+            return
+        }
+
+        if event.keyCode == 53 { // ESC
+            stopRecording(resignFirstResponder: true)
+            return
+        }
+
         guard let shortcut = HotkeyRecorderShortcutBuilder.build(from: event) else {
             NSSound.beep()
             return
         }
 
-        stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+        self.shortcut = shortcut
         onShortcutCaptured?(shortcut)
+        stopRecording(resignFirstResponder: true)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard let shortcut = HotkeyRecorderShortcutBuilder.build(from: event) else {
+        guard isRecording else {
             return false
         }
 
-        stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+        if event.keyCode == 53 { // ESC
+            stopRecording(resignFirstResponder: true)
+            return true
+        }
+
+        guard let shortcut = HotkeyRecorderShortcutBuilder.build(from: event) else {
+            NSSound.beep()
+            return true
+        }
+
+        self.shortcut = shortcut
         onShortcutCaptured?(shortcut)
+        stopRecording(resignFirstResponder: true)
         return true
+    }
+
+    private func configureAppearance() {
+        placeholderString = "点击后设置快捷键"
+        alignment = .center
+        isEditable = false
+        isSelectable = false
+        isBordered = false
+        drawsBackground = false
+        font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
+        textColor = .labelColor
+        focusRingType = .none
+        lineBreakMode = .byTruncatingTail
+        maximumNumberOfLines = 1
+        wantsLayer = true
+        toolTip = "点击后按下新组合键"
+        stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
+        updateVisualStyle()
+    }
+
+    private func updateVisualStyle() {
+        guard let layer else { return }
+
+        let borderColor: NSColor
+        let backgroundColor: NSColor
+        let textColor: NSColor
+
+        if !isShortcutEnabled {
+            borderColor = NSColor.separatorColor.withAlphaComponent(0.6)
+            backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.45)
+            textColor = NSColor.secondaryLabelColor
+        } else if isRecording {
+            borderColor = NSColor.controlAccentColor
+            backgroundColor = NSColor.textBackgroundColor
+            textColor = NSColor.labelColor
+        } else {
+            borderColor = NSColor.separatorColor.withAlphaComponent(0.9)
+            backgroundColor = NSColor.textBackgroundColor
+            textColor = NSColor.labelColor
+        }
+
+        self.textColor = textColor
+        alphaValue = isShortcutEnabled ? 1 : 0.72
+        layer.backgroundColor = backgroundColor.cgColor
+        layer.cornerRadius = Appearance.cornerRadius
+        layer.borderColor = borderColor.cgColor
+        layer.borderWidth = isRecording ? Appearance.focusedBorderWidth : Appearance.normalBorderWidth
+        layer.shadowColor = isRecording ? NSColor.controlAccentColor.withAlphaComponent(0.22).cgColor : nil
+        layer.shadowOpacity = isRecording ? 1 : 0
+        layer.shadowRadius = isRecording ? Appearance.focusedShadowRadius : 0
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+    }
+
+    private func startRecording() {
+        guard isShortcutEnabled else {
+            return
+        }
+
+        if !isRecording {
+            isRecording = true
+        }
+        window?.makeFirstResponder(self)
+    }
+
+    private func stopRecording(resignFirstResponder: Bool) {
+        guard isRecording else {
+            return
+        }
+
+        isRecording = false
+        if resignFirstResponder, window?.firstResponder === self {
+            window?.makeFirstResponder(nil)
+        }
     }
 }
