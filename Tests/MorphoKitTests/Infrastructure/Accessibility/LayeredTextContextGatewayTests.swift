@@ -51,6 +51,30 @@ final class LayeredTextContextGatewayTests: XCTestCase {
         XCTAssertEqual(fallback.lastReplaceContext?.replacementToken, fallbackToken)
     }
 
+    func testCaptureFallsBackWhenPrimaryReportsFocusedInputUnavailable() throws {
+        let fallbackToken = UUID()
+        let fallbackContext = TextContext(
+            appBundleId: "com.tinyspeck.slackmacgap",
+            fullText: "full text",
+            selectedRange: nil,
+            selectedText: nil,
+            isSecureField: false,
+            replacementToken: fallbackToken
+        )
+        let primary = GatewayStub(captureResult: .failure(TranslationWorkflowError.focusedInputUnavailable))
+        let fallback = GatewayStub(captureResult: .success(fallbackContext))
+        let gateway = LayeredTextContextGateway(primaryGateway: primary, fallbackGateway: fallback)
+
+        let context = try gateway.captureFocusedContext()
+        try gateway.replace(in: context, with: "translated", mode: .entireField)
+
+        XCTAssertEqual(primary.captureCallCount, 1)
+        XCTAssertEqual(fallback.captureCallCount, 1)
+        XCTAssertEqual(primary.replaceCallCount, 0)
+        XCTAssertEqual(fallback.replaceCallCount, 1)
+        XCTAssertEqual(fallback.lastReplaceContext?.replacementToken, fallbackToken)
+    }
+
     func testReplaceFailsWhenTokenCannotBeResolved() {
         let primary = GatewayStub(captureResult: .failure(TranslationWorkflowError.unsupportedInputControl))
         let fallback = GatewayStub(captureResult: .failure(TranslationWorkflowError.unsupportedInputControl))

@@ -13,13 +13,24 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
 
     private let maxParentDepth = 20
     private let maxChildSearchDepth = 2
+    private let manualAccessibilityRetryDelay: TimeInterval = 0.02
+    private let manualAccessibilityAttribute = "AXManualAccessibility"
+    private let sleep: (TimeInterval) -> Void
     private var focusedElements: [UUID: AXUIElement] = [:]
 
-    public init() {}
+    public init() {
+        self.sleep = { interval in
+            Thread.sleep(forTimeInterval: interval)
+        }
+    }
+
+    init(sleep: @escaping (TimeInterval) -> Void) {
+        self.sleep = sleep
+    }
 
     public func captureFocusedContext() throws -> TextContext {
         let focused = try focusedElement()
-        let resolved = try resolveTextElement(from: focused)
+        let resolved = try resolveTextElementWithRetry(from: focused)
 
         let isSecureField = resolved.role == "AXSecureTextField"
         if isSecureField {
@@ -55,28 +66,39 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
         }
 
         let currentFocused = try focusedElement()
-        guard areElementsInSameFocusChain(currentFocused, storedElement) else {
-            throw TranslationWorkflowError.focusedInputUnavailable
+        if areElementsInSameFocusChain(currentFocused, storedElement) {
+            let status = write(translatedText, to: storedElement, mode: mode)
+            guard status == .success else {
+                throw TranslationWorkflowError.replacementFailed
+            }
+            return
         }
 
-        let status: AXError
+        do {
+            let resolved = try resolveTextElement(from: currentFocused)
+            let status = write(translatedText, to: resolved.element, mode: mode)
+            guard status == .success else {
+                throw TranslationWorkflowError.focusedInputUnavailable
+            }
+        } catch {
+            throw TranslationWorkflowError.focusedInputUnavailable
+        }
+    }
+
+    private func write(_ translatedText: String, to element: AXUIElement, mode: ReplacementMode) -> AXError {
         switch mode {
         case .selection:
-            status = AXUIElementSetAttributeValue(
-                storedElement,
+            return AXUIElementSetAttributeValue(
+                element,
                 kAXSelectedTextAttribute as CFString,
                 translatedText as CFTypeRef
             )
         case .entireField:
-            status = AXUIElementSetAttributeValue(
-                storedElement,
+            return AXUIElementSetAttributeValue(
+                element,
                 kAXValueAttribute as CFString,
                 translatedText as CFTypeRef
             )
-        }
-
-        guard status == .success else {
-            throw TranslationWorkflowError.replacementFailed
         }
     }
 
@@ -90,6 +112,53 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
         }
 
         throw TranslationWorkflowError.unsupportedInputControl
+    }
+
+    private func resolveTextElementWithRetry(from focused: AXUIElement) throws -> ResolvedTextElement {
+        do {
+            return try resolveTextElement(from: focused)
+        } catch let error as TranslationWorkflowError {
+            guard error == .unsupportedInputControl else {
+                throw error
+            }
+
+            return try retryResolveTextElementAfterManualAccessibility(
+                from: focused,
+                originalError: error
+            )
+        } catch {
+            throw error
+        }
+    }
+
+    private func retryResolveTextElementAfterManualAccessibility(
+        from focused: AXUIElement,
+        originalError: TranslationWorkflowError
+    ) throws -> ResolvedTextElement {
+        enableManualAccessibility(for: focused)
+        wait(manualAccessibilityRetryDelay)
+
+        do {
+            let retriedFocused = try focusedElement()
+            return try resolveTextElement(from: retriedFocused)
+        } catch {
+            throw originalError
+        }
+    }
+
+    private func enableManualAccessibility(for focused: AXUIElement) {
+        var pid: pid_t = 0
+        AXUIElementGetPid(focused, &pid)
+        guard pid > 0 else {
+            return
+        }
+
+        let appElement = AXUIElementCreateApplication(pid)
+        _ = AXUIElementSetAttributeValue(
+            appElement,
+            manualAccessibilityAttribute as CFString,
+            kCFBooleanTrue
+        )
     }
 
     private func resolveInParentChain(
@@ -343,5 +412,13 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
         AXUIElementGetPid(element, &pid)
 
         return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? "unknown"
+    }
+
+    private func wait(_ interval: TimeInterval) {
+        guard interval > 0 else {
+            return
+        }
+
+        sleep(interval)
     }
 }

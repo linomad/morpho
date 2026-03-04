@@ -7,12 +7,25 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         let appBundleId: String
     }
 
+    private struct CapturedText {
+        enum Kind {
+            case selection
+            case entireField
+        }
+
+        let text: String
+        let kind: Kind
+    }
+
     private let keyboard: any KeyboardEventInjecting
     private let pasteboard: any PasteboardAccessing
     private let focusedAppBundleIdProvider: () -> String?
     private let secureFieldDetector: () -> Bool
     private let copyPollingAttempts: Int
     private let copyPollingInterval: TimeInterval
+    private let selectAllSettleInterval: TimeInterval
+    private let pasteCommitInterval: TimeInterval
+    private let sleep: (TimeInterval) -> Void
 
     private var sessions: [UUID: Session] = [:]
 
@@ -23,6 +36,11 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         self.secureFieldDetector = { SystemFocusInspector.isFocusedSecureField() }
         self.copyPollingAttempts = 12
         self.copyPollingInterval = 0.01
+        self.selectAllSettleInterval = 0.03
+        self.pasteCommitInterval = 0.04
+        self.sleep = { interval in
+            Thread.sleep(forTimeInterval: interval)
+        }
     }
 
     init(
@@ -31,7 +49,12 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         focusedAppBundleIdProvider: @escaping () -> String?,
         secureFieldDetector: @escaping () -> Bool,
         copyPollingAttempts: Int = 12,
-        copyPollingInterval: TimeInterval = 0.01
+        copyPollingInterval: TimeInterval = 0.01,
+        selectAllSettleInterval: TimeInterval = 0.03,
+        pasteCommitInterval: TimeInterval = 0.04,
+        sleep: @escaping (TimeInterval) -> Void = { interval in
+            Thread.sleep(forTimeInterval: interval)
+        }
     ) {
         self.keyboard = keyboard
         self.pasteboard = pasteboard
@@ -39,6 +62,9 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         self.secureFieldDetector = secureFieldDetector
         self.copyPollingAttempts = copyPollingAttempts
         self.copyPollingInterval = copyPollingInterval
+        self.selectAllSettleInterval = selectAllSettleInterval
+        self.pasteCommitInterval = pasteCommitInterval
+        self.sleep = sleep
     }
 
     public func captureFocusedContext() throws -> TextContext {
@@ -57,14 +83,26 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
             )
         }
 
-        let selectedText = try captureSelectedText()
+        let capturedText = try captureText()
         let token = UUID()
         sessions[token] = Session(appBundleId: appBundleId)
 
+        let selectedText: String?
+        let selectedRange: NSRange?
+
+        switch capturedText.kind {
+        case .selection:
+            selectedText = capturedText.text
+            selectedRange = NSRange(location: 0, length: (capturedText.text as NSString).length)
+        case .entireField:
+            selectedText = nil
+            selectedRange = nil
+        }
+
         return TextContext(
             appBundleId: appBundleId,
-            fullText: selectedText,
-            selectedRange: NSRange(location: 0, length: (selectedText as NSString).length),
+            fullText: capturedText.text,
+            selectedRange: selectedRange,
             selectedText: selectedText,
             isSecureField: false,
             replacementToken: token
@@ -90,62 +128,108 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
 
         pasteboard.writeString(translatedText)
         do {
+            if mode == .entireField {
+                try keyboard.trigger(.selectAll)
+                wait(selectAllSettleInterval)
+            }
             try keyboard.trigger(.paste)
+            wait(pasteCommitInterval)
         } catch {
             throw TranslationWorkflowError.replacementFailed
         }
     }
 
-    private func captureSelectedText() throws -> String {
+    private func captureText() throws -> CapturedText {
         let snapshot = pasteboard.snapshot()
         defer {
             pasteboard.restore(snapshot)
         }
 
+        if let selectedText = try copyText(selectAllBeforeCopy: false),
+           isMeaningful(text: selectedText) {
+            return CapturedText(text: selectedText, kind: .selection)
+        }
+
+        if let fullText = try copyText(selectAllBeforeCopy: true),
+           isMeaningful(text: fullText) {
+            return CapturedText(text: fullText, kind: .entireField)
+        }
+
+        throw TranslationWorkflowError.unsupportedInputControl
+    }
+
+    private func copyText(selectAllBeforeCopy: Bool) throws -> String? {
+        let probeToken = "morpho-probe-\(UUID().uuidString)"
+        pasteboard.writeString(probeToken)
+        let baselineChangeCount = pasteboard.changeCount
+
         do {
+            if selectAllBeforeCopy {
+                try keyboard.trigger(.selectAll)
+                wait(selectAllSettleInterval)
+            }
             try keyboard.trigger(.copy)
         } catch {
             throw TranslationWorkflowError.focusedInputUnavailable
         }
 
-        guard let copiedText = readCopiedSelection(afterChangeCount: snapshot.changeCount) else {
-            throw TranslationWorkflowError.selectionRequiredForCurrentControl
-        }
-
-        let trimmedText = copiedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty else {
-            throw TranslationWorkflowError.selectionRequiredForCurrentControl
-        }
-
-        return copiedText
+        return readCopiedSelection(
+            afterChangeCount: baselineChangeCount,
+            probeToken: probeToken
+        )
     }
 
-    private func readCopiedSelection(afterChangeCount baselineChangeCount: Int) -> String? {
+    private func isMeaningful(text: String) -> Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func readCopiedSelection(
+        afterChangeCount baselineChangeCount: Int,
+        probeToken: String
+    ) -> String? {
         for _ in 0..<copyPollingAttempts {
             if pasteboard.changeCount > baselineChangeCount {
-                return pasteboard.readString()
+                return validatedCopiedText(probeToken: probeToken)
             }
 
-            Thread.sleep(forTimeInterval: copyPollingInterval)
+            wait(copyPollingInterval)
         }
 
         if pasteboard.changeCount > baselineChangeCount {
-            return pasteboard.readString()
+            return validatedCopiedText(probeToken: probeToken)
         }
 
         return nil
+    }
+
+    private func validatedCopiedText(probeToken: String) -> String? {
+        guard let copied = pasteboard.readString(), copied != probeToken else {
+            return nil
+        }
+
+        return copied
+    }
+
+    private func wait(_ interval: TimeInterval) {
+        guard interval > 0 else {
+            return
+        }
+
+        sleep(interval)
     }
 }
 
 private enum SystemFocusInspector {
     static func focusedAppBundleId() -> String? {
-        guard let focusedElement = focusedElement() else {
-            return nil
+        if let focusedElement = focusedElement() {
+            var pid: pid_t = 0
+            AXUIElementGetPid(focusedElement, &pid)
+            if let bundleIdentifier = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier {
+                return bundleIdentifier
+            }
         }
 
-        var pid: pid_t = 0
-        AXUIElementGetPid(focusedElement, &pid)
-        return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
     static func isFocusedSecureField() -> Bool {

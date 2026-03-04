@@ -2,6 +2,7 @@ import ApplicationServices
 import Foundation
 
 enum KeyboardShortcut {
+    case selectAll
     case copy
     case paste
 }
@@ -16,6 +17,7 @@ enum KeyboardEventInjectionError: Error {
 
 final class SystemKeyboardEventInjector: KeyboardEventInjecting {
     private enum KeyCode {
+        static let a: CGKeyCode = 0
         static let c: CGKeyCode = 8
         static let v: CGKeyCode = 9
     }
@@ -23,6 +25,8 @@ final class SystemKeyboardEventInjector: KeyboardEventInjecting {
     func trigger(_ shortcut: KeyboardShortcut) throws {
         let keyCode: CGKeyCode
         switch shortcut {
+        case .selectAll:
+            keyCode = KeyCode.a
         case .copy:
             keyCode = KeyCode.c
         case .paste:
