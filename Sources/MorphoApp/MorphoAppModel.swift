@@ -7,20 +7,6 @@ final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
     private static let defaultSourceLanguage = Locale.Language(identifier: "en")
 
-    private enum MenuBarIconState {
-        case idle
-        case running
-
-        var systemImage: String {
-            switch self {
-            case .idle:
-                return "dot.square.fill"
-            case .running:
-                return "dot.square"
-            }
-        }
-    }
-
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
     @Published private(set) var lastStatus: StatusEntry
@@ -37,10 +23,14 @@ final class MorphoAppModel: ObservableObject {
 
     private var cancellables: Set<AnyCancellable> = []
     private var inFlightTranslationTask: Task<Void, Never>?
+    private var menuBarIconStateMachine: MenuBarIconStateMachine
+    private var menuBarIconAnimationTimer: Timer?
+    private var menuBarIconCompletionHoldTask: Task<Void, Never>?
 
     init() {
         let settingsStore = UserDefaultsSettingsStore()
         let runHistoryStore = FileRunHistoryStore()
+        let menuBarIconStateMachine = MenuBarIconStateMachine()
         var initialSettings = settingsStore.load()
         if case .auto = initialSettings.sourceLanguage,
            initialSettings.autoSwitchLanguagePair == nil {
@@ -62,9 +52,10 @@ final class MorphoAppModel: ObservableObject {
         self.statusCenter = statusCenter
         self.statusReporter = statusReporter
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
-        self.menuBarIconSystemImage = MenuBarIconState.idle.systemImage
+        self.menuBarIconSystemImage = menuBarIconStateMachine.currentSystemImage
         self.runHistoryEntries = runHistoryStore.load(limit: 200)
         self.launchAtLoginErrorMessage = nil
+        self.menuBarIconStateMachine = menuBarIconStateMachine
 
         let textGateway = LayeredTextContextGateway()
         let siliconFlowHTTPClient = RetryingCloudHTTPClient(
@@ -105,7 +96,7 @@ final class MorphoAppModel: ObservableObject {
             return
         }
 
-        updateMenuBarIconState(.running)
+        beginMenuBarIconRunningState()
 
         inFlightTranslationTask = Task { [weak self] in
             guard let self else {
@@ -348,10 +339,75 @@ final class MorphoAppModel: ObservableObject {
     private func handleTranslationCompletion() {
         inFlightTranslationTask = nil
         refreshRunHistory()
-        updateMenuBarIconState(.idle)
+        transitionMenuBarIconToCompletionHold()
     }
 
-    private func updateMenuBarIconState(_ state: MenuBarIconState) {
-        menuBarIconSystemImage = state.systemImage
+    private func beginMenuBarIconRunningState() {
+        menuBarIconCompletionHoldTask?.cancel()
+        menuBarIconCompletionHoldTask = nil
+        menuBarIconSystemImage = menuBarIconStateMachine.beginTranslation()
+        startMenuBarIconAnimationTimerIfNeeded()
+    }
+
+    private func transitionMenuBarIconToCompletionHold() {
+        stopMenuBarIconAnimationTimer()
+        menuBarIconSystemImage = menuBarIconStateMachine.finishTranslation()
+        menuBarIconCompletionHoldTask?.cancel()
+
+        menuBarIconCompletionHoldTask = Task { [weak self] in
+            guard let self else {
+                return
+            }
+
+            do {
+                try await Task.sleep(for: .seconds(MenuBarIconStateMachine.completionHoldDuration))
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            self.resetMenuBarIconToIdle()
+        }
+    }
+
+    private func resetMenuBarIconToIdle() {
+        menuBarIconCompletionHoldTask = nil
+        menuBarIconSystemImage = menuBarIconStateMachine.completionHoldTimeout()
+    }
+
+    private func startMenuBarIconAnimationTimerIfNeeded() {
+        stopMenuBarIconAnimationTimer()
+        guard menuBarIconStateMachine.isAnimating else {
+            return
+        }
+
+        let timer = Timer(
+            timeInterval: MenuBarIconStateMachine.swapInterval,
+            repeats: true
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.advanceMenuBarIconAnimation()
+            }
+        }
+
+        menuBarIconAnimationTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopMenuBarIconAnimationTimer() {
+        menuBarIconAnimationTimer?.invalidate()
+        menuBarIconAnimationTimer = nil
+    }
+
+    private func advanceMenuBarIconAnimation() {
+        guard inFlightTranslationTask != nil else {
+            stopMenuBarIconAnimationTimer()
+            return
+        }
+
+        menuBarIconSystemImage = menuBarIconStateMachine.animationTick()
     }
 }

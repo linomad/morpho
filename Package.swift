@@ -29,5 +29,9 @@ let package = Package(
             name: "MorphoKitTests",
             dependencies: ["MorphoKit"]
         ),
+        .testTarget(
+            name: "MorphoAppTests",
+            dependencies: ["MorphoApp"]
+        ),
     ]
 )
