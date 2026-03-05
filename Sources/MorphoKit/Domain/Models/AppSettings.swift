@@ -41,6 +41,7 @@ public struct AutoSwitchLanguagePair: Equatable, Sendable {
 public struct AppSettings: Equatable, Sendable {
     public static let defaultInterfaceLanguageCode = "system"
     public static let defaultTranslationModelID = "deepseek-ai/DeepSeek-V3"
+    public static let defaultAutoSwitchFirstLanguage = Locale.Language(identifier: "en")
 
     public var hotkey: HotkeyShortcut
     public var isHotkeyEnabled: Bool
@@ -82,6 +83,9 @@ public struct AppSettings: Equatable, Sendable {
         isHotkeyEnabled: true,
         sourceLanguage: .auto,
         targetLanguage: Locale.Language(identifier: "zh-Hans"),
+        autoSwitchLanguagePair: AppSettings.makeDefaultAutoSwitchLanguagePair(
+            targetLanguage: Locale.Language(identifier: "zh-Hans")
+        ),
         translationProvider: .siliconFlow,
         translationAPIKey: "",
         launchAtLoginPreferred: false,
@@ -93,5 +97,14 @@ public struct AppSettings: Equatable, Sendable {
         var copy = self
         copy.targetLanguage = Locale.Language(identifier: identifier)
         return copy
+    }
+
+    public static func makeDefaultAutoSwitchLanguagePair(
+        targetLanguage: Locale.Language
+    ) -> AutoSwitchLanguagePair {
+        AutoSwitchLanguagePair(
+            firstLanguage: defaultAutoSwitchFirstLanguage,
+            secondLanguage: targetLanguage
+        )
     }
 }

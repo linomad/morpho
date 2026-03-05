@@ -195,6 +195,25 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         XCTAssertEqual(loaded.launchAtLoginPreferred, AppSettings.defaultValue.launchAtLoginPreferred)
     }
 
+    func testLoadAutoSourceWithoutPairBuildsDefaultBidirectionalPair() throws {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+
+        let legacyPayload: [String: Any] = [
+            "keyCode": 17,
+            "modifiers": 0,
+            "sourceMode": "auto",
+            "targetLanguageIdentifier": Locale.Language(identifier: "zh-Hans").maximalIdentifier,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: legacyPayload)
+        defaults.set(data, forKey: "morpho.app.settings")
+
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.autoSwitchLanguagePair?.firstLanguage.minimalIdentifier, "en")
+        XCTAssertEqual(loaded.autoSwitchLanguagePair?.secondLanguage.minimalIdentifier, "zh")
+    }
+
     private func makeIsolatedDefaults() -> UserDefaults {
         let suiteName = "morpho.tests.settings.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard

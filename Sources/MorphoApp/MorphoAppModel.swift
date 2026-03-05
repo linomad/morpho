@@ -42,6 +42,12 @@ final class MorphoAppModel: ObservableObject {
         let settingsStore = UserDefaultsSettingsStore()
         let runHistoryStore = FileRunHistoryStore()
         var initialSettings = settingsStore.load()
+        if case .auto = initialSettings.sourceLanguage,
+           initialSettings.autoSwitchLanguagePair == nil {
+            initialSettings.autoSwitchLanguagePair = AppSettings.makeDefaultAutoSwitchLanguagePair(
+                targetLanguage: initialSettings.targetLanguage
+            )
+        }
         initialSettings.launchAtLoginPreferred = LaunchAtLoginController.isEnabled()
         settingsStore.save(initialSettings)
         let statusCenter = StatusCenter()

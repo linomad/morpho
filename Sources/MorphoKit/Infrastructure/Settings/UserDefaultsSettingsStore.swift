@@ -45,7 +45,9 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             sourceLanguage = .auto
         }
 
-        let autoSwitchLanguagePair: AutoSwitchLanguagePair?
+        let loadedTargetLanguage = Locale.Language(identifier: persisted.targetLanguageIdentifier)
+
+        var autoSwitchLanguagePair: AutoSwitchLanguagePair?
         if
             let firstIdentifier = persisted.autoSwitchPairFirstLanguageIdentifier,
             let secondIdentifier = persisted.autoSwitchPairSecondLanguageIdentifier
@@ -58,6 +60,12 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             autoSwitchLanguagePair = nil
         }
 
+        if case .auto = sourceLanguage, autoSwitchLanguagePair == nil {
+            autoSwitchLanguagePair = AppSettings.makeDefaultAutoSwitchLanguagePair(
+                targetLanguage: loadedTargetLanguage
+            )
+        }
+
         return AppSettings(
             hotkey: HotkeyShortcut(
                 keyCode: persisted.keyCode,
@@ -65,7 +73,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             ),
             isHotkeyEnabled: persisted.isHotkeyEnabled ?? true,
             sourceLanguage: sourceLanguage,
-            targetLanguage: Locale.Language(identifier: persisted.targetLanguageIdentifier),
+            targetLanguage: loadedTargetLanguage,
             autoSwitchLanguagePair: autoSwitchLanguagePair,
             translationProvider: provider,
             translationAPIKey: persisted.translationAPIKey ?? "",
