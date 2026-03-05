@@ -9,14 +9,24 @@ public final class FileRunHistoryStore: RunHistoryStore, @unchecked Sendable {
 
     public init(
         fileURL: URL? = nil,
-        maxStoredEntries: Int = 500,
+        maxStoredEntries: Int = 50,
         fileManager: FileManager = .default
     ) {
         self.fileManager = fileManager
         self.maxStoredEntries = max(1, maxStoredEntries)
         self.fileURL = fileURL ?? Self.defaultHistoryFileURL(fileManager: fileManager)
         self.entries = []
-        self.entries = readEntriesFromDisk()
+
+        let persistedEntries = readEntriesFromDisk()
+        let normalizedEntries = Self.normalize(
+            entries: persistedEntries,
+            maxStoredEntries: self.maxStoredEntries
+        )
+        self.entries = normalizedEntries
+
+        if normalizedEntries != persistedEntries {
+            persistLockedEntries()
+        }
     }
 
     public func load(limit: Int) -> [RunHistoryEntry] {
@@ -31,10 +41,7 @@ public final class FileRunHistoryStore: RunHistoryStore, @unchecked Sendable {
     public func append(_ entry: RunHistoryEntry) {
         lock.withLock {
             entries.insert(entry, at: 0)
-            entries.sort { $0.createdAt > $1.createdAt }
-            if entries.count > maxStoredEntries {
-                entries = Array(entries.prefix(maxStoredEntries))
-            }
+            entries = Self.normalize(entries: entries, maxStoredEntries: maxStoredEntries)
             persistLockedEntries()
         }
     }
@@ -60,6 +67,17 @@ public final class FileRunHistoryStore: RunHistoryStore, @unchecked Sendable {
                 return []
             }
         }
+    }
+
+    private static func normalize(
+        entries: [RunHistoryEntry],
+        maxStoredEntries: Int
+    ) -> [RunHistoryEntry] {
+        let sortedEntries = entries.sorted { $0.createdAt > $1.createdAt }
+        if sortedEntries.count > maxStoredEntries {
+            return Array(sortedEntries.prefix(maxStoredEntries))
+        }
+        return sortedEntries
     }
 
     private func persistLockedEntries() {

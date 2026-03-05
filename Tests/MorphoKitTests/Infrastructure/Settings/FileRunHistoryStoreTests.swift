@@ -103,9 +103,53 @@ final class FileRunHistoryStoreTests: XCTestCase {
         XCTAssertTrue(store.load(limit: 10).isEmpty)
     }
 
+    func testInitTrimsPersistedEntriesToDefaultLimitAndPersistsTrimmedResult() throws {
+        let fileURL = uniqueHistoryFileURL()
+        let allEntries = (0..<55).map { index in
+            makeEntry(
+                createdAt: Date(timeIntervalSince1970: TimeInterval(index)),
+                inputText: "entry-\(index)"
+            )
+        }
+        try write(entries: allEntries, to: fileURL)
+
+        let store = FileRunHistoryStore(fileURL: fileURL)
+        let loadedEntries = store.load(limit: 100)
+        let persistedEntries = try readEntries(from: fileURL)
+
+        XCTAssertEqual(loadedEntries.count, 50)
+        XCTAssertEqual(persistedEntries.count, 50)
+        XCTAssertEqual(loadedEntries.first?.inputText, "entry-54")
+        XCTAssertEqual(loadedEntries.last?.inputText, "entry-5")
+    }
+
     private func uniqueHistoryFileURL() -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("morpho.tests.history.\(UUID().uuidString)", isDirectory: true)
         return directory.appendingPathComponent("run-history.json")
+    }
+
+    private func makeEntry(createdAt: Date, inputText: String) -> RunHistoryEntry {
+        RunHistoryEntry(
+            createdAt: createdAt,
+            inputText: inputText,
+            outputText: "输出-\(inputText)",
+            sourceLanguageIdentifier: "en",
+            targetLanguageIdentifier: "zh-Hans",
+            translationProvider: .siliconFlow,
+            translationModelID: "deepseek-ai/DeepSeek-V3"
+        )
+    }
+
+    private func write(entries: [RunHistoryEntry], to fileURL: URL) throws {
+        let directory = fileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(entries)
+        try data.write(to: fileURL, options: [.atomic])
+    }
+
+    private func readEntries(from fileURL: URL) throws -> [RunHistoryEntry] {
+        let data = try Data(contentsOf: fileURL)
+        return try JSONDecoder().decode([RunHistoryEntry].self, from: data)
     }
 }
