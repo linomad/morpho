@@ -2,39 +2,47 @@ import XCTest
 @testable import MorphoApp
 
 final class MenuBarIconStateMachineTests: XCTestCase {
-    func testBeginTranslationStartsFromFirstIconAndTogglesOnAnimationTicks() {
+    func testInitialIconUsesIdleGlobeSymbol() {
+        let machine = MenuBarIconStateMachine()
+        XCTAssertEqual(machine.currentSystemImage, "globe.asia.australia.fill")
+    }
+
+    func testBeginTranslationCyclesThroughConfiguredRunningGlobeSymbols() {
         var machine = MenuBarIconStateMachine()
 
         let startIcon = machine.beginTranslation()
-        XCTAssertEqual(startIcon, "slider.horizontal.below.square.filled.and.square")
+        XCTAssertEqual(startIcon, "globe.central.south.asia.fill")
 
         let firstTickIcon = machine.animationTick()
-        XCTAssertEqual(firstTickIcon, "slider.horizontal.below.square.and.square.filled")
+        XCTAssertEqual(firstTickIcon, "globe.central.south.asia.fill")
 
         let secondTickIcon = machine.animationTick()
-        XCTAssertEqual(secondTickIcon, "slider.horizontal.below.square.filled.and.square")
+        XCTAssertEqual(secondTickIcon, "globe.americas.fill")
+
+        let thirdTickIcon = machine.animationTick()
+        XCTAssertEqual(thirdTickIcon, "globe.central.south.asia.fill")
     }
 
-    func testFinishTranslationPinsSecondIconAndReturnsToFirstAfterHoldTimeout() {
+    func testFinishTranslationPinsLastRunningIconAndReturnsToIdleAfterHoldTimeout() {
         var machine = MenuBarIconStateMachine()
 
         _ = machine.beginTranslation()
         let completionIcon = machine.finishTranslation()
-        XCTAssertEqual(completionIcon, "slider.horizontal.below.square.and.square.filled")
+        XCTAssertEqual(completionIcon, "globe.americas.fill")
 
         let idleIcon = machine.completionHoldTimeout()
-        XCTAssertEqual(idleIcon, "slider.horizontal.below.square.filled.and.square")
-        XCTAssertEqual(machine.currentSystemImage, "slider.horizontal.below.square.filled.and.square")
+        XCTAssertEqual(idleIcon, "globe.asia.australia.fill")
+        XCTAssertEqual(machine.currentSystemImage, "globe.asia.australia.fill")
     }
 
-    func testBeginTranslationDuringCompletionHoldRestartsAnimationFromFirstIcon() {
+    func testBeginTranslationDuringCompletionHoldRestartsFromFirstRunningIcon() {
         var machine = MenuBarIconStateMachine()
 
         _ = machine.beginTranslation()
         _ = machine.finishTranslation()
 
         let restartedIcon = machine.beginTranslation()
-        XCTAssertEqual(restartedIcon, "slider.horizontal.below.square.filled.and.square")
-        XCTAssertEqual(machine.animationTick(), "slider.horizontal.below.square.and.square.filled")
+        XCTAssertEqual(restartedIcon, "globe.central.south.asia.fill")
+        XCTAssertEqual(machine.animationTick(), "globe.central.south.asia.fill")
     }
 }

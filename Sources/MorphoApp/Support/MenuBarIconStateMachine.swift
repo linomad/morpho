@@ -3,38 +3,21 @@ import Foundation
 struct MenuBarIconStateMachine {
     static let swapInterval: TimeInterval = 0.45
     static let completionHoldDuration: TimeInterval = 3.0
-
-    private enum IconFrame {
-        case primary
-        case secondary
-
-        var systemImage: String {
-            switch self {
-            case .primary:
-                return "slider.horizontal.below.square.filled.and.square"
-            case .secondary:
-                return "slider.horizontal.below.square.and.square.filled"
-            }
-        }
-
-        var toggled: IconFrame {
-            switch self {
-            case .primary:
-                return .secondary
-            case .secondary:
-                return .primary
-            }
-        }
-    }
+    private static let idleSystemImage = "globe.asia.australia.fill"
+    private static let runningCycleSystemImages = [
+        "globe.central.south.asia.fill",
+        "globe.central.south.asia.fill",
+        "globe.americas.fill",
+    ]
 
     private enum Phase {
         case idle
-        case running(nextFrame: IconFrame)
+        case running(nextCycleIndex: Int)
         case completionHolding
     }
 
     private var phase: Phase = .idle
-    private(set) var currentSystemImage: String = IconFrame.primary.systemImage
+    private(set) var currentSystemImage: String = Self.idleSystemImage
 
     var isAnimating: Bool {
         if case .running = phase {
@@ -44,24 +27,27 @@ struct MenuBarIconStateMachine {
     }
 
     mutating func beginTranslation() -> String {
-        phase = .running(nextFrame: .secondary)
-        currentSystemImage = IconFrame.primary.systemImage
+        let firstCycleIndex = 0
+        let nextCycleIndex = Self.runningCycleSystemImages.index(after: firstCycleIndex)
+        phase = .running(nextCycleIndex: nextCycleIndex % Self.runningCycleSystemImages.count)
+        currentSystemImage = Self.runningCycleSystemImages[firstCycleIndex]
         return currentSystemImage
     }
 
     mutating func animationTick() -> String {
-        guard case .running(let nextFrame) = phase else {
+        guard case .running(let nextCycleIndex) = phase else {
             return currentSystemImage
         }
 
-        currentSystemImage = nextFrame.systemImage
-        phase = .running(nextFrame: nextFrame.toggled)
+        currentSystemImage = Self.runningCycleSystemImages[nextCycleIndex]
+        let followingIndex = Self.runningCycleSystemImages.index(after: nextCycleIndex)
+        phase = .running(nextCycleIndex: followingIndex % Self.runningCycleSystemImages.count)
         return currentSystemImage
     }
 
     mutating func finishTranslation() -> String {
         phase = .completionHolding
-        currentSystemImage = IconFrame.secondary.systemImage
+        currentSystemImage = Self.runningCycleSystemImages.last ?? Self.idleSystemImage
         return currentSystemImage
     }
 
@@ -71,7 +57,7 @@ struct MenuBarIconStateMachine {
         }
 
         phase = .idle
-        currentSystemImage = IconFrame.primary.systemImage
+        currentSystemImage = Self.idleSystemImage
         return currentSystemImage
     }
 }
