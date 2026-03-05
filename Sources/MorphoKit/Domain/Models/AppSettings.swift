@@ -39,6 +39,9 @@ public struct AutoSwitchLanguagePair: Equatable, Sendable {
 }
 
 public struct AppSettings: Equatable, Sendable {
+    public static let defaultInterfaceLanguageCode = "system"
+    public static let defaultTranslationModelID = "deepseek-ai/DeepSeek-V3"
+
     public var hotkey: HotkeyShortcut
     public var isHotkeyEnabled: Bool
     public var sourceLanguage: LanguageSource
@@ -46,6 +49,9 @@ public struct AppSettings: Equatable, Sendable {
     public var autoSwitchLanguagePair: AutoSwitchLanguagePair?
     public var translationProvider: TranslationProvider
     public var translationAPIKey: String
+    public var launchAtLoginPreferred: Bool
+    public var interfaceLanguageCode: String
+    public var translationModelID: String
 
     public init(
         hotkey: HotkeyShortcut,
@@ -54,7 +60,10 @@ public struct AppSettings: Equatable, Sendable {
         targetLanguage: Locale.Language,
         autoSwitchLanguagePair: AutoSwitchLanguagePair? = nil,
         translationProvider: TranslationProvider,
-        translationAPIKey: String
+        translationAPIKey: String,
+        launchAtLoginPreferred: Bool = false,
+        interfaceLanguageCode: String = AppSettings.defaultInterfaceLanguageCode,
+        translationModelID: String = AppSettings.defaultTranslationModelID
     ) {
         self.hotkey = hotkey
         self.isHotkeyEnabled = isHotkeyEnabled
@@ -63,6 +72,9 @@ public struct AppSettings: Equatable, Sendable {
         self.autoSwitchLanguagePair = autoSwitchLanguagePair
         self.translationProvider = translationProvider
         self.translationAPIKey = translationAPIKey
+        self.launchAtLoginPreferred = launchAtLoginPreferred
+        self.interfaceLanguageCode = interfaceLanguageCode
+        self.translationModelID = translationModelID
     }
 
     public static let defaultValue = AppSettings(
@@ -71,7 +83,10 @@ public struct AppSettings: Equatable, Sendable {
         sourceLanguage: .auto,
         targetLanguage: Locale.Language(identifier: "zh-Hans"),
         translationProvider: .siliconFlow,
-        translationAPIKey: ""
+        translationAPIKey: "",
+        launchAtLoginPreferred: false,
+        interfaceLanguageCode: AppSettings.defaultInterfaceLanguageCode,
+        translationModelID: AppSettings.defaultTranslationModelID
     )
 
     public func withTargetLanguage(_ identifier: String) -> AppSettings {

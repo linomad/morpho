@@ -35,6 +35,6 @@ public enum LanguageSource: Equatable, Sendable {
     case fixed(Locale.Language)
 }
 
-public enum TranslationProvider: String, CaseIterable, Equatable, Sendable {
+public enum TranslationProvider: String, CaseIterable, Codable, Equatable, Sendable {
     case siliconFlow
 }

@@ -13,7 +13,8 @@ public protocol TranslationEngine {
         _ text: String,
         source: LanguageSource,
         target: Locale.Language,
-        apiKey: String?
+        apiKey: String?,
+        modelID: String?
     ) async throws -> String
 }
 

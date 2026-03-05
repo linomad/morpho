@@ -30,13 +30,18 @@ final class SiliconFlowTranslationProviderClientTests: XCTestCase {
             text: "hello",
             source: .auto,
             target: Locale.Language(identifier: "zh-Hans"),
-            apiKey: "sk-test"
+            apiKey: "sk-test",
+            modelID: "deepseek-ai/DeepSeek-V3"
         )
 
         XCTAssertEqual(output, "你好")
         XCTAssertEqual(http.lastRequest?.url?.absoluteString, "https://api.siliconflow.cn/v1/chat/completions")
         XCTAssertEqual(http.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer sk-test")
         XCTAssertEqual(http.lastRequest?.value(forHTTPHeaderField: "Content-Type"), "application/json")
+
+        let requestBody = try XCTUnwrap(http.lastRequest?.httpBody)
+        let bodyObject = try XCTUnwrap(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+        XCTAssertEqual(bodyObject["model"] as? String, "deepseek-ai/DeepSeek-V3")
     }
 
     func testTranslateMapsUnauthorizedToAuthenticationError() async {
@@ -48,7 +53,8 @@ final class SiliconFlowTranslationProviderClientTests: XCTestCase {
                 text: "hello",
                 source: .auto,
                 target: Locale.Language(identifier: "zh-Hans"),
-                apiKey: "sk-test"
+                apiKey: "sk-test",
+                modelID: nil
             )
             XCTFail("Expected error")
         } catch let error as TranslationWorkflowError {

@@ -60,6 +60,7 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(result, .success)
         XCTAssertEqual(engine.lastSourceText, "hello")
         XCTAssertEqual(engine.lastAPIKey, AppSettings.defaultValue.translationAPIKey)
+        XCTAssertEqual(engine.lastModelID, AppSettings.defaultValue.translationModelID)
         XCTAssertEqual(engineFactory.lastProvider, .siliconFlow)
         XCTAssertEqual(replacer.lastReplacementText, "你好")
         XCTAssertEqual(replacer.lastReplacementMode, .selection)
@@ -309,6 +310,48 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(result, .failure(.selectionRequiredForCurrentControl))
         XCTAssertEqual(statusSink.last?.severity, .warning)
     }
+
+    func testExecuteAppendsRunHistoryWhenTranslationSucceeds() async {
+        let permission = PermissionStub(isTrusted: true)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: "hello",
+            selectedRange: NSRange(location: 0, length: 5),
+            selectedText: "hello",
+            isSecureField: false
+        )
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy()
+        var settings = AppSettings.defaultValue
+        settings.sourceLanguage = .fixed(Locale.Language(identifier: "en"))
+        settings.targetLanguage = Locale.Language(identifier: "zh-Hans")
+        settings.translationProvider = .siliconFlow
+        settings.translationModelID = "deepseek-ai/DeepSeek-V3"
+        let settingsStore = SettingsStoreStub(settings: settings)
+        let engine = TranslationEngineStub(translatedText: "你好")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+        let runHistoryStore = RunHistoryStoreSpy()
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink,
+            runHistoryStore: runHistoryStore
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .success)
+        XCTAssertEqual(runHistoryStore.entries.count, 1)
+        XCTAssertEqual(runHistoryStore.entries.first?.inputText, "hello")
+        XCTAssertEqual(runHistoryStore.entries.first?.outputText, "你好")
+        XCTAssertEqual(runHistoryStore.entries.first?.translationProvider, .siliconFlow)
+        XCTAssertEqual(runHistoryStore.entries.first?.translationModelID, "deepseek-ai/DeepSeek-V3")
+    }
 }
 
 private final class PermissionStub: AccessibilityPermissionChecking {
@@ -386,6 +429,7 @@ private final class TranslationEngineStub: TranslationEngine {
     var lastAPIKey: String?
     var lastSourceLanguage: LanguageSource?
     var lastTargetLanguage: Locale.Language?
+    var lastModelID: String?
 
     init(translatedText: String = "translated") {
         self.translatedText = translatedText
@@ -395,12 +439,14 @@ private final class TranslationEngineStub: TranslationEngine {
         _ text: String,
         source: LanguageSource,
         target: Locale.Language,
-        apiKey: String?
+        apiKey: String?,
+        modelID: String?
     ) async throws -> String {
         lastSourceText = text
         lastSourceLanguage = source
         lastTargetLanguage = target
         lastAPIKey = apiKey
+        lastModelID = modelID
         return translatedText
     }
 }
@@ -444,5 +490,21 @@ private final class StatusSinkSpy: StatusReporting {
 
     func publish(_ entry: StatusEntry) {
         entries.append(entry)
+    }
+}
+
+private final class RunHistoryStoreSpy: RunHistoryStore, @unchecked Sendable {
+    private(set) var entries: [RunHistoryEntry] = []
+
+    func load(limit: Int) -> [RunHistoryEntry] {
+        Array(entries.prefix(limit))
+    }
+
+    func append(_ entry: RunHistoryEntry) {
+        entries.insert(entry, at: 0)
+    }
+
+    func clear() {
+        entries = []
     }
 }

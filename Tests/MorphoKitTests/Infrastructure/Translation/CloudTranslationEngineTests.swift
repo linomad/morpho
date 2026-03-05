@@ -14,7 +14,8 @@ final class CloudTranslationEngineTests: XCTestCase {
                 "hello",
                 source: .auto,
                 target: Locale.Language(identifier: "zh-Hans"),
-                apiKey: ""
+                apiKey: "",
+                modelID: nil
             )
             XCTFail("Expected error")
         } catch let error as TranslationWorkflowError {
@@ -34,12 +35,14 @@ final class CloudTranslationEngineTests: XCTestCase {
             "hello",
             source: .auto,
             target: Locale.Language(identifier: "zh-Hans"),
-            apiKey: "sk-test"
+            apiKey: "sk-test",
+            modelID: "deepseek-ai/DeepSeek-V3"
         )
 
         XCTAssertEqual(output, "你好")
         XCTAssertEqual(client.lastAPIKey, "sk-test")
         XCTAssertEqual(client.lastText, "hello")
+        XCTAssertEqual(client.lastModelID, "deepseek-ai/DeepSeek-V3")
     }
 }
 
@@ -47,6 +50,7 @@ private final class CloudTranslationProviderClientStub: CloudTranslationProvider
     private let result: String
     var lastText: String?
     var lastAPIKey: String?
+    var lastModelID: String?
 
     init(result: String = "translated") {
         self.result = result
@@ -56,10 +60,12 @@ private final class CloudTranslationProviderClientStub: CloudTranslationProvider
         text: String,
         source: LanguageSource,
         target: Locale.Language,
-        apiKey: String
+        apiKey: String,
+        modelID: String?
     ) async throws -> String {
         lastText = text
         lastAPIKey = apiKey
+        lastModelID = modelID
         return result
     }
 }

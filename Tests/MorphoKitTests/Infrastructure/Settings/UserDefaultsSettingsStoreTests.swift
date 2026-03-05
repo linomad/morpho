@@ -139,6 +139,62 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         XCTAssertEqual(raw["isHotkeyEnabled"] as? Bool, false)
     }
 
+    func testSaveAndLoadPreservesLaunchAtLoginPreferred() {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+        var settings = AppSettings.defaultValue
+        settings.launchAtLoginPreferred = true
+
+        store.save(settings)
+        let loaded = store.load()
+
+        XCTAssertTrue(loaded.launchAtLoginPreferred)
+    }
+
+    func testSaveAndLoadPreservesInterfaceLanguageCode() {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+        var settings = AppSettings.defaultValue
+        settings.interfaceLanguageCode = "en"
+
+        store.save(settings)
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.interfaceLanguageCode, "en")
+    }
+
+    func testSaveAndLoadPreservesTranslationModelID() {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+        var settings = AppSettings.defaultValue
+        settings.translationModelID = "deepseek-ai/DeepSeek-V3"
+
+        store.save(settings)
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.translationModelID, "deepseek-ai/DeepSeek-V3")
+    }
+
+    func testLoadFallsBackToDefaultForMissingNewSettingsFields() throws {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+
+        let legacyPayload: [String: Any] = [
+            "keyCode": 17,
+            "modifiers": 0,
+            "sourceMode": "auto",
+            "targetLanguageIdentifier": Locale.Language(identifier: "zh-Hans").maximalIdentifier,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: legacyPayload)
+        defaults.set(data, forKey: "morpho.app.settings")
+
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.interfaceLanguageCode, AppSettings.defaultValue.interfaceLanguageCode)
+        XCTAssertEqual(loaded.translationModelID, AppSettings.defaultValue.translationModelID)
+        XCTAssertEqual(loaded.launchAtLoginPreferred, AppSettings.defaultValue.launchAtLoginPreferred)
+    }
+
     private func makeIsolatedDefaults() -> UserDefaults {
         let suiteName = "morpho.tests.settings.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard

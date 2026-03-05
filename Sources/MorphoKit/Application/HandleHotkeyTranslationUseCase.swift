@@ -8,6 +8,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
     private let engineFactory: TranslationEngineFactoryProtocol
     private let statusSink: StatusReporting
     private let sourceLanguageDetector: any SourceLanguageDetecting
+    private let runHistoryStore: RunHistoryStore
 
     public init(
         permissionChecker: AccessibilityPermissionChecking,
@@ -16,7 +17,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         settingsStore: SettingsStore,
         engineFactory: TranslationEngineFactoryProtocol,
         statusSink: StatusReporting,
-        sourceLanguageDetector: any SourceLanguageDetecting = NoopSourceLanguageDetector()
+        sourceLanguageDetector: any SourceLanguageDetecting = NoopSourceLanguageDetector(),
+        runHistoryStore: RunHistoryStore = NoopRunHistoryStore()
     ) {
         self.permissionChecker = permissionChecker
         self.contextProvider = contextProvider
@@ -25,6 +27,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         self.engineFactory = engineFactory
         self.statusSink = statusSink
         self.sourceLanguageDetector = sourceLanguageDetector
+        self.runHistoryStore = runHistoryStore
     }
 
     public func execute() async -> TranslationExecutionResult {
@@ -59,7 +62,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
                 payload.text,
                 source: languageRoute.source,
                 target: languageRoute.target,
-                apiKey: settings.translationAPIKey
+                apiKey: settings.translationAPIKey,
+                modelID: settings.translationModelID
             )
         } catch let error as TranslationWorkflowError {
             return fail(error, severity: severity(for: error))
@@ -74,6 +78,13 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         } catch {
             return fail(.replacementFailed, severity: .error)
         }
+
+        appendRunHistory(
+            inputText: payload.text,
+            outputText: translatedText,
+            route: languageRoute,
+            settings: settings
+        )
 
         statusSink.publish(
             StatusEntry(
@@ -148,6 +159,34 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         default:
             return .error
         }
+    }
+
+    private func appendRunHistory(
+        inputText: String,
+        outputText: String,
+        route: (source: LanguageSource, target: Locale.Language),
+        settings: AppSettings
+    ) {
+        let sourceIdentifier: String
+        switch route.source {
+        case .auto:
+            sourceIdentifier = "auto"
+        case .fixed(let language):
+            sourceIdentifier = LanguageIdentifierCodec.persistedIdentifier(for: language)
+        }
+
+        let targetIdentifier = LanguageIdentifierCodec.persistedIdentifier(for: route.target)
+
+        runHistoryStore.append(
+            RunHistoryEntry(
+                inputText: inputText,
+                outputText: outputText,
+                sourceLanguageIdentifier: sourceIdentifier,
+                targetLanguageIdentifier: targetIdentifier,
+                translationProvider: settings.translationProvider,
+                translationModelID: settings.translationModelID
+            )
+        )
     }
 }
 

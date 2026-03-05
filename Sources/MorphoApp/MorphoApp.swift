@@ -11,7 +11,7 @@ struct MorphoApp: App {
 
         Settings {
             SettingsView(model: model)
-                .frame(width: 530, height: 560)
+                .frame(width: 760, height: 560)
         }
         .windowResizability(.contentSize)
     }

@@ -25,8 +25,11 @@ final class MorphoAppModel: ObservableObject {
     @Published private(set) var apiKey: String
     @Published private(set) var lastStatus: StatusEntry
     @Published private(set) var menuBarIconSystemImage: String
+    @Published private(set) var runHistoryEntries: [RunHistoryEntry]
+    @Published private(set) var launchAtLoginErrorMessage: String?
 
     private let settingsStore: SettingsStore
+    private let runHistoryStore: RunHistoryStore
     private let statusCenter: StatusCenter
     private let statusReporter: CompositeStatusReporter
     private let useCase: HandleHotkeyTranslationUseCase
@@ -37,19 +40,25 @@ final class MorphoAppModel: ObservableObject {
 
     init() {
         let settingsStore = UserDefaultsSettingsStore()
-        let initialSettings = settingsStore.load()
+        let runHistoryStore = FileRunHistoryStore()
+        var initialSettings = settingsStore.load()
+        initialSettings.launchAtLoginPreferred = LaunchAtLoginController.isEnabled()
+        settingsStore.save(initialSettings)
         let statusCenter = StatusCenter()
         let statusReporter = CompositeStatusReporter(
             reporters: [statusCenter, UserNotificationStatusReporter()]
         )
 
         self.settingsStore = settingsStore
+        self.runHistoryStore = runHistoryStore
         self.settings = initialSettings
         self.apiKey = initialSettings.translationAPIKey
         self.statusCenter = statusCenter
         self.statusReporter = statusReporter
         self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
         self.menuBarIconSystemImage = MenuBarIconState.idle.systemImage
+        self.runHistoryEntries = runHistoryStore.load(limit: 200)
+        self.launchAtLoginErrorMessage = nil
 
         let textGateway = LayeredTextContextGateway()
         let siliconFlowHTTPClient = RetryingCloudHTTPClient(
@@ -69,7 +78,8 @@ final class MorphoAppModel: ObservableObject {
             settingsStore: settingsStore,
             engineFactory: engineFactory,
             statusSink: statusReporter,
-            sourceLanguageDetector: NaturalLanguageSourceLanguageDetector()
+            sourceLanguageDetector: NaturalLanguageSourceLanguageDetector(),
+            runHistoryStore: runHistoryStore
         )
 
         do {
@@ -154,6 +164,37 @@ final class MorphoAppModel: ObservableObject {
         persistAndApplySettings()
     }
 
+    func updateTranslationModelID(_ modelID: String) {
+        let trimmed = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.translationModelID = trimmed.isEmpty ? AppSettings.defaultTranslationModelID : trimmed
+        persistSettings()
+    }
+
+    func updateLaunchAtLoginPreferred(_ preferred: Bool) {
+        do {
+            try LaunchAtLoginController.setEnabled(preferred)
+            settings.launchAtLoginPreferred = LaunchAtLoginController.isEnabled()
+            launchAtLoginErrorMessage = nil
+            persistSettings()
+        } catch {
+            settings.launchAtLoginPreferred = LaunchAtLoginController.isEnabled()
+            launchAtLoginErrorMessage = "开机启动设置失败：\(error.localizedDescription)"
+            persistSettings()
+            statusReporter.publish(
+                StatusEntry(
+                    message: launchAtLoginErrorMessage ?? "开机启动设置失败。",
+                    severity: .error
+                )
+            )
+        }
+    }
+
+    func updateInterfaceLanguageCode(_ code: String) {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.interfaceLanguageCode = trimmed.isEmpty ? AppSettings.defaultInterfaceLanguageCode : trimmed
+        persistSettings()
+    }
+
     func updateAPIKey(_ value: String) {
         apiKey = value
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -203,6 +244,27 @@ final class MorphoAppModel: ObservableObject {
 
     var hotkeyEnabled: Bool {
         settings.isHotkeyEnabled
+    }
+
+    var launchAtLoginPreferred: Bool {
+        settings.launchAtLoginPreferred
+    }
+
+    var interfaceLanguageCode: String {
+        settings.interfaceLanguageCode
+    }
+
+    var translationModelID: String {
+        settings.translationModelID
+    }
+
+    func refreshRunHistory(limit: Int = 200) {
+        runHistoryEntries = runHistoryStore.load(limit: limit)
+    }
+
+    func clearRunHistory() {
+        runHistoryStore.clear()
+        runHistoryEntries = []
     }
 
     private func resolvedSourceLanguage() -> Locale.Language {
@@ -279,6 +341,7 @@ final class MorphoAppModel: ObservableObject {
 
     private func handleTranslationCompletion() {
         inFlightTranslationTask = nil
+        refreshRunHistory()
         updateMenuBarIconState(.idle)
     }
 

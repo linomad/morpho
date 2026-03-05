@@ -13,7 +13,8 @@ public final class CloudTranslationEngine: TranslationEngine {
         _ text: String,
         source: LanguageSource,
         target: Locale.Language,
-        apiKey: String?
+        apiKey: String?,
+        modelID: String?
     ) async throws -> String {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedText.isEmpty else {
@@ -35,7 +36,8 @@ public final class CloudTranslationEngine: TranslationEngine {
                 text: normalizedText,
                 source: source,
                 target: target,
-                apiKey: apiKey
+                apiKey: apiKey,
+                modelID: modelID
             )
         } catch let error as TranslationWorkflowError {
             throw error

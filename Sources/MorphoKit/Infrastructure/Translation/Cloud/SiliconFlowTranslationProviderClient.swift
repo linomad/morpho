@@ -19,11 +19,20 @@ public final class SiliconFlowTranslationProviderClient: CloudTranslationProvide
         text: String,
         source: LanguageSource,
         target: Locale.Language,
-        apiKey: String
+        apiKey: String,
+        modelID: String?
     ) async throws -> String {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedText.isEmpty else {
             throw TranslationWorkflowError.noTextToTranslate
+        }
+
+        let resolvedModel: String
+        if let modelID = modelID?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !modelID.isEmpty {
+            resolvedModel = modelID
+        } else {
+            resolvedModel = model
         }
 
         var request = URLRequest(url: endpoint)
@@ -32,7 +41,7 @@ public final class SiliconFlowTranslationProviderClient: CloudTranslationProvide
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
         let body = SiliconFlowChatCompletionsRequest(
-            model: model,
+            model: resolvedModel,
             messages: [
                 .init(
                     role: "system",
