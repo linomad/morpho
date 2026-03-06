@@ -16,10 +16,9 @@ It keeps translation inside the writing flow, so language switching feels instan
 
 ## Design Principles
 
-- Focus and simplicity: do one thing extremely well.
-- AX First: prefer Accessibility direct read/write to minimize clipboard usage.
-- Clear layering: keep business policy and platform implementation decoupled.
-- Incremental extension: SiliconFlow first, multi-provider ready, no premature complexity.
+- Solve one core problem deeply: help users translate what they are typing instantly, without breaking their writing flow.
+- Keep the product small and purposeful: Morpho is not an all-in-one tool; every feature must serve this core writing scenario and avoid feature bloat.
+- Obsess over interaction quality: every action should feel fast, predictable, and effortless, with clear feedback and minimal learning cost.
 
 ## Core MVP Capabilities
 
