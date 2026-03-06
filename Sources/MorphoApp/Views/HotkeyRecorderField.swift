@@ -5,6 +5,7 @@ import SwiftUI
 struct HotkeyRecorderField: NSViewRepresentable {
     let shortcut: HotkeyShortcut
     let isEnabled: Bool
+    let locale: Locale
     let onShortcutChange: (HotkeyShortcut) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -16,6 +17,7 @@ struct HotkeyRecorderField: NSViewRepresentable {
         textField.onShortcutCaptured = context.coordinator.handleShortcut
         textField.shortcut = shortcut
         textField.isShortcutEnabled = isEnabled
+        textField.locale = locale
         return textField
     }
 
@@ -23,6 +25,7 @@ struct HotkeyRecorderField: NSViewRepresentable {
         nsView.onShortcutCaptured = context.coordinator.handleShortcut
         nsView.shortcut = shortcut
         nsView.isShortcutEnabled = isEnabled
+        nsView.locale = locale
     }
 
     final class Coordinator {
@@ -47,6 +50,12 @@ final class HotkeyRecorderTextField: NSTextField {
     }
 
     var onShortcutCaptured: ((HotkeyShortcut) -> Void)?
+    var locale: Locale = .autoupdatingCurrent {
+        didSet {
+            updateLocalizedCopy()
+        }
+    }
+
     var shortcut: HotkeyShortcut = .defaultValue {
         didSet {
             if !isRecording {
@@ -70,7 +79,9 @@ final class HotkeyRecorderTextField: NSTextField {
 
     private var isRecording = false {
         didSet {
-            stringValue = isRecording ? "按下新组合键" : HotkeyShortcutPresentation.summary(for: shortcut)
+            stringValue = isRecording
+                ? AppLocalization.string("hotkey.recorder.recording", locale: locale)
+                : HotkeyShortcutPresentation.summary(for: shortcut)
             updateVisualStyle()
         }
     }
@@ -150,7 +161,6 @@ final class HotkeyRecorderTextField: NSTextField {
     }
 
     private func configureAppearance() {
-        placeholderString = "点击后设置快捷键"
         alignment = .center
         isEditable = false
         isSelectable = false
@@ -162,9 +172,17 @@ final class HotkeyRecorderTextField: NSTextField {
         lineBreakMode = .byTruncatingTail
         maximumNumberOfLines = 1
         wantsLayer = true
-        toolTip = "点击后按下新组合键"
+        updateLocalizedCopy()
         stringValue = HotkeyShortcutPresentation.summary(for: shortcut)
         updateVisualStyle()
+    }
+
+    private func updateLocalizedCopy() {
+        placeholderString = AppLocalization.string("hotkey.recorder.placeholder", locale: locale)
+        toolTip = AppLocalization.string("hotkey.recorder.tooltip", locale: locale)
+        if isRecording {
+            stringValue = AppLocalization.string("hotkey.recorder.recording", locale: locale)
+        }
     }
 
     private func updateVisualStyle() {

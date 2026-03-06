@@ -1,0 +1,77 @@
+"hotkey.recorder.placeholder" = "Click to set shortcut";
+"hotkey.recorder.recording" = "Press new shortcut";
+"hotkey.recorder.tooltip" = "Click and press a new shortcut";
+
+"menu.action.quit" = "Quit Morpho";
+"menu.action.settings" = "Settings";
+"menu.action.translate_now" = "Translate Now";
+"menu.app_name" = "Morpho";
+"menu.hotkey.disabled" = "Disabled";
+"menu.hotkey_summary" = "Hotkey: %@";
+
+"settings.about.app_info.title" = "App Info";
+"settings.about.app_name" = "Morpho";
+"settings.about.open_source.title" = "Open-source Stack";
+"settings.about.project_link" = "Project URL";
+"settings.about.tech.accessibility" = "Text capture and replacement for focused inputs";
+"settings.about.tech.appkit" = "macOS windows and system-level integration";
+"settings.about.tech.carbon" = "Global hotkey registration and monitoring";
+"settings.about.tech.naturallanguage" = "Automatic source language detection";
+"settings.about.tech.swiftui" = "Settings and menu bar UI framework";
+"settings.about.version" = "Version: %@";
+
+"settings.engine.api_key.hint" = "API Key is saved to local settings immediately.";
+"settings.engine.api_key.label" = "API Key";
+"settings.engine.api_key.placeholder" = "Enter SiliconFlow API Key";
+"settings.engine.description" = "Current version uses SiliconFlow cloud translation. Provider and model capabilities are extensible.";
+"settings.engine.model.label" = "Model";
+"settings.engine.provider.label" = "Provider";
+"settings.engine.title" = "Translation Engine";
+
+"settings.general.app_behavior.description" = "Control startup behavior of the app in the system.";
+"settings.general.app_behavior.title" = "App Behavior";
+"settings.general.interface_language.description" = "Set the display language of the app interface.";
+"settings.general.interface_language.label" = "Language";
+"settings.general.interface_language.title" = "Interface Language";
+"settings.general.launch_at_login.error" = "Failed to update launch at login: %@";
+"settings.general.launch_at_login.error_generic" = "Failed to update launch at login.";
+"settings.general.launch_at_login.hint" = "When enabled, Morpho starts automatically after login.";
+"settings.general.launch_at_login.toggle" = "Launch at Login";
+
+"settings.history.clear.button" = "Clear History";
+"settings.history.description" = "Record recent translation runs, including timestamp, input, output and language direction.";
+"settings.history.empty" = "No history yet";
+"settings.history.input.label" = "Input";
+"settings.history.load_more.button" = "Load More";
+"settings.history.output.label" = "Output";
+"settings.history.recent.label" = "Recent Records";
+"settings.history.title" = "Run History";
+
+"settings.hotkey.description" = "Enable global shortcut to trigger translation.";
+"settings.hotkey.enable.toggle" = "Enable Hotkey";
+"settings.hotkey.hint" = "Click the recorder and press a key combo to apply immediately.";
+"settings.hotkey.shortcut.label" = "Shortcut";
+"settings.hotkey.title" = "Hotkey";
+
+"settings.interface_language.option.en" = "English";
+"settings.interface_language.option.system" = "Follow System";
+"settings.interface_language.option.zh_hans" = "Simplified Chinese";
+
+"settings.tab.about" = "About";
+"settings.tab.engine" = "Engine";
+"settings.tab.general" = "General";
+"settings.tab.history" = "History";
+"settings.tab.hotkey" = "Hotkey";
+"settings.tab.translation" = "Translation";
+
+"settings.translation.auto_detect.hint" = "When enabled: if source language is detected, translate to target language; if target language is detected, translate to source language.";
+"settings.translation.auto_detect.toggle" = "Enable Auto Detection";
+"settings.translation.description" = "Configure translation direction and auto detection rules.";
+"settings.translation.source.label" = "Source";
+"settings.translation.target.label" = "Target";
+"settings.translation.title" = "Translation Language";
+
+"status.hotkey.init_failed" = "Global hotkey initialization failed.";
+"status.hotkey.register_failed" = "Failed to register hotkey. Please choose another shortcut.";
+"status.launch_at_login.unsupported_system" = "Current macOS version does not support launch-at-login configuration.";
+"status.ready" = "Ready";

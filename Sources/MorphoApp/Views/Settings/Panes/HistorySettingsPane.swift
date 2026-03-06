@@ -4,15 +4,19 @@ import SwiftUI
 struct HistorySettingsPane: View {
     @ObservedObject var model: MorphoAppModel
     @State private var visibleLimit = 20
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingsCard(title: "运行历史", description: "记录最近翻译任务的时间、输入、输出与语言方向。") {
+            SettingsCard(
+                title: localized("settings.history.title"),
+                description: localized("settings.history.description")
+            ) {
                 HStack {
-                    Text("最近记录")
+                    Text(localized("settings.history.recent.label"))
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    Button("清空历史", role: .destructive) {
+                    Button(localized("settings.history.clear.button"), role: .destructive) {
                         model.clearRunHistory()
                         visibleLimit = 20
                     }
@@ -20,7 +24,7 @@ struct HistorySettingsPane: View {
                 }
 
                 if model.runHistoryEntries.isEmpty {
-                    Text("暂无运行历史")
+                    Text(localized("settings.history.empty"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -31,7 +35,7 @@ struct HistorySettingsPane: View {
                     }
 
                     if visibleLimit < model.runHistoryEntries.count {
-                        Button("加载更多") {
+                        Button(localized("settings.history.load_more.button")) {
                             visibleLimit += 20
                         }
                     }
@@ -43,10 +47,15 @@ struct HistorySettingsPane: View {
             model.refreshRunHistory(limit: 500)
         }
     }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
+    }
 }
 
 private struct HistoryEntryRow: View {
     let entry: RunHistoryEntry
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -62,8 +71,8 @@ private struct HistoryEntryRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            historyBlock(label: "输入", value: entry.inputText)
-            historyBlock(label: "输出", value: entry.outputText)
+            historyBlock(label: localized("settings.history.input.label"), value: entry.inputText)
+            historyBlock(label: localized("settings.history.output.label"), value: entry.outputText)
         }
         .padding(10)
         .background(
@@ -87,5 +96,9 @@ private struct HistoryEntryRow: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
     }
 }

@@ -11,26 +11,36 @@ struct EngineSettingsPane: View {
     @ObservedObject var model: MorphoAppModel
     @State private var apiKeyDraft = ""
     @FocusState private var isAPIKeyFocused: Bool
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingsCard(title: "翻译引擎", description: "当前版本使用 SiliconFlow 云端翻译，Provider 与模型能力均可扩展。") {
-                MenuPickerRow(label: "Provider") {
-                    Picker("Provider", selection: Binding(
-                        get: { model.settings.translationProvider },
-                        set: { model.updateProvider($0) }
-                    )) {
+            SettingsCard(
+                title: localized("settings.engine.title"),
+                description: localized("settings.engine.description")
+            ) {
+                MenuPickerRow(label: localized("settings.engine.provider.label")) {
+                    Picker(
+                        localized("settings.engine.provider.label"),
+                        selection: Binding(
+                            get: { model.settings.translationProvider },
+                            set: { model.updateProvider($0) }
+                        )
+                    ) {
                         Text("SiliconFlow").tag(TranslationProvider.siliconFlow)
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
                 }
 
-                MenuPickerRow(label: "模型") {
-                    Picker("模型", selection: Binding(
-                        get: { TranslationModelOptions.normalizedID(model.translationModelID) },
-                        set: { model.updateTranslationModelID($0) }
-                    )) {
+                MenuPickerRow(label: localized("settings.engine.model.label")) {
+                    Picker(
+                        localized("settings.engine.model.label"),
+                        selection: Binding(
+                            get: { TranslationModelOptions.normalizedID(model.translationModelID) },
+                            set: { model.updateTranslationModelID($0) }
+                        )
+                    ) {
                         ForEach(TranslationModelOptions.all) { option in
                             Text(option.title).tag(option.id)
                         }
@@ -40,10 +50,10 @@ struct EngineSettingsPane: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("API Key")
+                    Text(localized("settings.engine.api_key.label"))
                         .foregroundStyle(.secondary)
 
-                    TextField("输入 SiliconFlow API Key", text: $apiKeyDraft)
+                    TextField(localized("settings.engine.api_key.placeholder"), text: $apiKeyDraft)
                         .textFieldStyle(.plain)
                         .lineLimit(1)
                         .focused($isAPIKeyFocused)
@@ -62,7 +72,7 @@ struct EngineSettingsPane: View {
                         )
                 }
 
-                Text("API Key 输入后会立即保存到本地设置。")
+                Text(localized("settings.engine.api_key.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -76,6 +86,10 @@ struct EngineSettingsPane: View {
         .onChange(of: model.settings.translationProvider) { _, _ in
             apiKeyDraft = model.apiKey
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
     }
 }
 

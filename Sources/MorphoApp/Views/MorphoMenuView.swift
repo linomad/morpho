@@ -5,14 +5,21 @@ import SwiftUI
 struct MorphoMenuView: View {
     @ObservedObject var model: MorphoAppModel
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Morpho")
+            Text(localized("menu.app_name"))
                 .font(.headline)
 
-            Text("快捷键: \(model.hotkeySummaryForMenu)")
-                .font(.subheadline)
+            Text(
+                AppLocalization.format(
+                    "menu.hotkey_summary",
+                    locale: locale,
+                    hotkeySummary
+                )
+            )
+            .font(.subheadline)
 
             Text(model.lastStatus.message)
                 .font(.caption)
@@ -20,20 +27,28 @@ struct MorphoMenuView: View {
 
             Divider()
 
-            Button("立即翻译") {
+            Button(localized("menu.action.translate_now")) {
                 model.triggerTranslation()
             }
 
-            Button("设置") {
+            Button(localized("menu.action.settings")) {
                 openSettingsWindow()
             }
 
-            Button("退出 Morpho") {
+            Button(localized("menu.action.quit")) {
                 NSApplication.shared.terminate(nil)
             }
         }
         .padding(12)
         .frame(width: 280)
+    }
+
+    private var hotkeySummary: String {
+        if model.hotkeyEnabled {
+            return model.hotkeySummary
+        }
+
+        return localized("menu.hotkey.disabled")
     }
 
     private func color(for severity: StatusSeverity) -> Color {
@@ -56,8 +71,6 @@ struct MorphoMenuView: View {
             NSApp.setActivationPolicy(.regular)
             NSApp.activate(ignoringOtherApps: true)
 
-            // Find the settings window: either a newly appeared window,
-            // or a window whose title contains "Settings" / "设置"
             let settingsWindow = NSApp.windows.first(where: { !windowsBefore.contains($0) && $0.canBecomeKey })
                 ?? NSApp.windows.first(where: {
                     $0.canBecomeKey
@@ -69,11 +82,14 @@ struct MorphoMenuView: View {
                 settingsWindow.level = .floating
                 settingsWindow.makeKeyAndOrderFront(nil)
                 settingsWindow.orderFrontRegardless()
-                // Reset to normal level so it behaves normally after being shown
                 DispatchQueue.main.async {
                     settingsWindow.level = .normal
                 }
             }
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
     }
 }

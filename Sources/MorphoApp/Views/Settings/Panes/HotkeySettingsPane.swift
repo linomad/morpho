@@ -7,18 +7,22 @@ struct HotkeySettingsPane: View {
     }
 
     @ObservedObject var model: MorphoAppModel
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingsCard(title: "快捷键", description: "启用后可通过全局组合键触发翻译。") {
-                Toggle("启用快捷键", isOn: Binding(
+            SettingsCard(
+                title: localized("settings.hotkey.title"),
+                description: localized("settings.hotkey.description")
+            ) {
+                Toggle(localized("settings.hotkey.enable.toggle"), isOn: Binding(
                     get: { model.hotkeyEnabled },
                     set: { model.setHotkeyEnabled($0) }
                 ))
 
                 if model.hotkeyEnabled {
                     HStack(alignment: .center, spacing: 12) {
-                        Text("快捷键")
+                        Text(localized("settings.hotkey.shortcut.label"))
                             .foregroundStyle(.secondary)
 
                         Spacer(minLength: 12)
@@ -26,17 +30,22 @@ struct HotkeySettingsPane: View {
                         HotkeyRecorderField(
                             shortcut: model.settings.hotkey,
                             isEnabled: model.hotkeyEnabled,
+                            locale: locale,
                             onShortcutChange: { model.updateHotkeyShortcut($0) }
                         )
                         .frame(width: Layout.hotkeyDisplayWidth, height: Layout.inputHeight)
                     }
                     .frame(height: Layout.inputHeight)
 
-                    Text("点击录制框后直接按组合键，设置会立即生效。")
+                    Text(localized("settings.hotkey.hint"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
     }
 }

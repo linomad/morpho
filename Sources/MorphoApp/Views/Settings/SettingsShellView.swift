@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsShellView: View {
     @ObservedObject var model: MorphoAppModel
     @State private var selectedTab: SettingsTab = .general
+    @Environment(\.locale) private var locale
 
     var body: some View {
         ZStack {
@@ -26,7 +27,7 @@ struct SettingsShellView: View {
                     .frame(maxHeight: .infinity, alignment: .top)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(selectedTab.title)
+                    Text(selectedTab.title(locale: locale))
                         .font(.title3.weight(.semibold))
                         .padding(.top, 4)
 
@@ -42,7 +43,6 @@ struct SettingsShellView: View {
             .padding(10)
         }
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .environment(\.locale, InterfaceLanguageOptions.locale(for: model.interfaceLanguageCode))
     }
 
     @ViewBuilder

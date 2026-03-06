@@ -10,20 +10,24 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    func title(locale: Locale) -> String {
+        AppLocalization.string(titleKey, locale: locale)
+    }
+
+    private var titleKey: String {
         switch self {
         case .general:
-            return "通用"
+            return "settings.tab.general"
         case .hotkey:
-            return "快捷键"
+            return "settings.tab.hotkey"
         case .language:
-            return "语言"
+            return "settings.tab.translation"
         case .engine:
-            return "翻译引擎"
+            return "settings.tab.engine"
         case .history:
-            return "运行历史"
+            return "settings.tab.history"
         case .about:
-            return "关于"
+            return "settings.tab.about"
         }
     }
 

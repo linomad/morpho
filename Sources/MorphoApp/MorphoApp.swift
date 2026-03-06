@@ -14,6 +14,7 @@ struct MorphoApp: App {
     var body: some Scene {
         MenuBarExtra {
             MorphoMenuView(model: model)
+                .environment(\.locale, interfaceLocale)
         } label: {
             Image(nsImage: menuBarIconImage(systemName: model.menuBarIconSystemImage))
                 .accessibilityLabel("Morpho")
@@ -21,9 +22,14 @@ struct MorphoApp: App {
 
         Settings {
             SettingsView(model: model)
+                .environment(\.locale, interfaceLocale)
                 .frame(width: 760, height: 560)
         }
         .windowResizability(.contentSize)
+    }
+
+    private var interfaceLocale: Locale {
+        InterfaceLanguageOptions.locale(for: model.interfaceLanguageCode)
     }
 
     private func menuBarIconImage(systemName: String) -> NSImage {

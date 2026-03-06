@@ -3,14 +3,27 @@ import MorphoKit
 
 struct InterfaceLanguageOption: Identifiable, Equatable {
     let id: String
-    let title: String
+    let titleKey: String
+
+    func title(locale: Locale) -> String {
+        AppLocalization.string(titleKey, locale: locale)
+    }
 }
 
 enum InterfaceLanguageOptions {
     static let all: [InterfaceLanguageOption] = [
-        InterfaceLanguageOption(id: AppSettings.defaultInterfaceLanguageCode, title: "跟随系统"),
-        InterfaceLanguageOption(id: "zh-Hans", title: "简体中文"),
-        InterfaceLanguageOption(id: "en", title: "English")
+        InterfaceLanguageOption(
+            id: AppSettings.defaultInterfaceLanguageCode,
+            titleKey: "settings.interface_language.option.system"
+        ),
+        InterfaceLanguageOption(
+            id: "zh-Hans",
+            titleKey: "settings.interface_language.option.zh_hans"
+        ),
+        InterfaceLanguageOption(
+            id: "en",
+            titleKey: "settings.interface_language.option.en"
+        )
     ]
 
     static func normalizedCode(_ code: String) -> String {
@@ -20,9 +33,9 @@ enum InterfaceLanguageOptions {
         return AppSettings.defaultInterfaceLanguageCode
     }
 
-    static func title(for code: String) -> String {
+    static func title(for code: String, locale: Locale) -> String {
         let normalized = normalizedCode(code)
-        return all.first(where: { $0.id == normalized })?.title ?? normalized
+        return all.first(where: { $0.id == normalized })?.title(locale: locale) ?? normalized
     }
 
     static func locale(for code: String) -> Locale {

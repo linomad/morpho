@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsSidebarView: View {
     @Binding var selectedTab: SettingsTab
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -14,7 +15,7 @@ struct SettingsSidebarView: View {
                         Image(systemName: tab.iconName)
                             .font(.system(size: 13, weight: .semibold))
                             .frame(width: 16)
-                        Text(tab.title)
+                        Text(tab.title(locale: locale))
                             .font(.system(size: 14, weight: .medium))
                         Spacer(minLength: 0)
                     }

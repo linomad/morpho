@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "Morpho",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v15),
     ],
@@ -23,7 +24,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "MorphoApp",
-            dependencies: ["MorphoKit"]
+            dependencies: ["MorphoKit"],
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "MorphoKitTests",

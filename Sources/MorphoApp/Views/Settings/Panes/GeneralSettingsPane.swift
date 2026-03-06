@@ -2,19 +2,41 @@ import SwiftUI
 
 struct GeneralSettingsPane: View {
     @ObservedObject var model: MorphoAppModel
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SettingsCard(
-                title: "应用行为",
-                description: "控制应用在系统中的启动行为。"
+                title: localized("settings.general.interface_language.title"),
+                description: localized("settings.general.interface_language.description")
             ) {
-                Toggle("开机启动", isOn: Binding(
+                MenuPickerRow(label: localized("settings.general.interface_language.label")) {
+                    Picker(
+                        localized("settings.general.interface_language.label"),
+                        selection: Binding(
+                            get: { InterfaceLanguageOptions.normalizedCode(model.interfaceLanguageCode) },
+                            set: { model.updateInterfaceLanguageCode($0) }
+                        )
+                    ) {
+                        ForEach(InterfaceLanguageOptions.all) { option in
+                            Text(option.title(locale: locale)).tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+            }
+
+            SettingsCard(
+                title: localized("settings.general.app_behavior.title"),
+                description: localized("settings.general.app_behavior.description")
+            ) {
+                Toggle(localized("settings.general.launch_at_login.toggle"), isOn: Binding(
                     get: { model.launchAtLoginPreferred },
                     set: { model.updateLaunchAtLoginPreferred($0) }
                 ))
 
-                Text("启用后，Morpho 会在系统登录后自动启动。")
+                Text(localized("settings.general.launch_at_login.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -24,6 +46,25 @@ struct GeneralSettingsPane: View {
                         .foregroundStyle(.red)
                 }
             }
+        }
+    }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
+    }
+}
+
+private struct MenuPickerRow<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 10)
+            content()
+                .frame(width: 240, alignment: .trailing)
         }
     }
 }

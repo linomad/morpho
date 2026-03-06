@@ -1,0 +1,77 @@
+"hotkey.recorder.placeholder" = "点击后设置快捷键";
+"hotkey.recorder.recording" = "按下新组合键";
+"hotkey.recorder.tooltip" = "点击后按下新组合键";
+
+"menu.action.quit" = "退出 Morpho";
+"menu.action.settings" = "设置";
+"menu.action.translate_now" = "立即翻译";
+"menu.app_name" = "Morpho";
+"menu.hotkey.disabled" = "已关闭";
+"menu.hotkey_summary" = "快捷键: %@";
+
+"settings.about.app_info.title" = "应用信息";
+"settings.about.app_name" = "Morpho";
+"settings.about.open_source.title" = "开源技术方案";
+"settings.about.project_link" = "项目地址";
+"settings.about.tech.accessibility" = "输入框文本读取与写回";
+"settings.about.tech.appkit" = "macOS 窗口与系统级能力集成";
+"settings.about.tech.carbon" = "全局快捷键注册与监听";
+"settings.about.tech.naturallanguage" = "源语言自动检测";
+"settings.about.tech.swiftui" = "设置页与菜单栏界面框架";
+"settings.about.version" = "版本: %@";
+
+"settings.engine.api_key.hint" = "API Key 输入后会立即保存到本地设置。";
+"settings.engine.api_key.label" = "API Key";
+"settings.engine.api_key.placeholder" = "输入 SiliconFlow API Key";
+"settings.engine.description" = "当前版本使用 SiliconFlow 云端翻译，Provider 与模型能力均可扩展。";
+"settings.engine.model.label" = "模型";
+"settings.engine.provider.label" = "Provider";
+"settings.engine.title" = "翻译引擎";
+
+"settings.general.app_behavior.description" = "控制应用在系统中的启动行为。";
+"settings.general.app_behavior.title" = "应用行为";
+"settings.general.interface_language.description" = "用于设置应用界面展示语言。";
+"settings.general.interface_language.label" = "语言";
+"settings.general.interface_language.title" = "界面语言";
+"settings.general.launch_at_login.error" = "开机启动设置失败：%@";
+"settings.general.launch_at_login.error_generic" = "开机启动设置失败。";
+"settings.general.launch_at_login.hint" = "启用后，Morpho 会在系统登录后自动启动。";
+"settings.general.launch_at_login.toggle" = "开机启动";
+
+"settings.history.clear.button" = "清空历史";
+"settings.history.description" = "记录最近翻译任务的时间、输入、输出与语言方向。";
+"settings.history.empty" = "暂无运行历史";
+"settings.history.input.label" = "输入";
+"settings.history.load_more.button" = "加载更多";
+"settings.history.output.label" = "输出";
+"settings.history.recent.label" = "最近记录";
+"settings.history.title" = "运行历史";
+
+"settings.hotkey.description" = "启用后可通过全局组合键触发翻译。";
+"settings.hotkey.enable.toggle" = "启用快捷键";
+"settings.hotkey.hint" = "点击录制框后直接按组合键，设置会立即生效。";
+"settings.hotkey.shortcut.label" = "快捷键";
+"settings.hotkey.title" = "快捷键";
+
+"settings.interface_language.option.en" = "English";
+"settings.interface_language.option.system" = "跟随系统";
+"settings.interface_language.option.zh_hans" = "简体中文";
+
+"settings.tab.about" = "关于";
+"settings.tab.engine" = "翻译引擎";
+"settings.tab.general" = "通用";
+"settings.tab.history" = "运行历史";
+"settings.tab.hotkey" = "快捷键";
+"settings.tab.translation" = "翻译";
+
+"settings.translation.auto_detect.hint" = "开启后：识别为源语言时翻译为目标语言；识别为目标语言时翻译为源语言。";
+"settings.translation.auto_detect.toggle" = "开启自动检测";
+"settings.translation.description" = "配置翻译方向和自动检测规则。";
+"settings.translation.source.label" = "源语言";
+"settings.translation.target.label" = "目标语言";
+"settings.translation.title" = "翻译语言";
+
+"status.hotkey.init_failed" = "全局快捷键初始化失败。";
+"status.hotkey.register_failed" = "快捷键注册失败，请更换组合键。";
+"status.launch_at_login.unsupported_system" = "当前系统版本不支持开机启动配置。";
+"status.ready" = "准备就绪";

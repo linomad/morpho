@@ -5,40 +5,48 @@ struct AboutSettingsPane: View {
     private struct TechItem: Identifiable {
         let id: String
         let name: String
-        let description: String
+        let descriptionKey: String
     }
 
     private static let techItems: [TechItem] = [
-        TechItem(id: "swiftui", name: "SwiftUI", description: "设置页与菜单栏界面框架"),
-        TechItem(id: "appkit", name: "AppKit", description: "macOS 窗口与系统级能力集成"),
-        TechItem(id: "carbon", name: "Carbon HotKey", description: "全局快捷键注册与监听"),
-        TechItem(id: "naturallanguage", name: "NaturalLanguage", description: "源语言自动检测"),
-        TechItem(id: "accessibility", name: "Accessibility API", description: "输入框文本读取与写回")
+        TechItem(id: "swiftui", name: "SwiftUI", descriptionKey: "settings.about.tech.swiftui"),
+        TechItem(id: "appkit", name: "AppKit", descriptionKey: "settings.about.tech.appkit"),
+        TechItem(id: "carbon", name: "Carbon HotKey", descriptionKey: "settings.about.tech.carbon"),
+        TechItem(id: "naturallanguage", name: "NaturalLanguage", descriptionKey: "settings.about.tech.naturallanguage"),
+        TechItem(id: "accessibility", name: "Accessibility API", descriptionKey: "settings.about.tech.accessibility")
     ]
+
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingsCard(title: "应用信息") {
-                Text("Morpho")
+            SettingsCard(title: localized("settings.about.app_info.title")) {
+                Text(localized("settings.about.app_name"))
                     .font(.headline)
 
                 if let versionText {
-                    Text("版本: \(versionText)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        AppLocalization.format(
+                            "settings.about.version",
+                            locale: locale,
+                            versionText
+                        )
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
 
-                Link("项目地址", destination: URL(string: "https://github.com/linomad/morpho")!)
+                Link(localized("settings.about.project_link"), destination: URL(string: "https://github.com/linomad/morpho")!)
                     .font(.caption)
             }
 
-            SettingsCard(title: "开源技术方案") {
+            SettingsCard(title: localized("settings.about.open_source.title")) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Self.techItems) { item in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.name)
                                 .font(.subheadline.weight(.semibold))
-                            Text(item.description)
+                            Text(localized(item.descriptionKey))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -57,5 +65,9 @@ struct AboutSettingsPane: View {
             return "\(shortVersion) (\(buildVersion))"
         }
         return shortVersion ?? buildVersion
+    }
+
+    private func localized(_ key: String) -> String {
+        AppLocalization.string(key, locale: locale)
     }
 }

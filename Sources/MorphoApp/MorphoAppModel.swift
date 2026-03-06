@@ -51,7 +51,13 @@ final class MorphoAppModel: ObservableObject {
         self.apiKey = initialSettings.translationAPIKey
         self.statusCenter = statusCenter
         self.statusReporter = statusReporter
-        self.lastStatus = StatusEntry(message: "准备就绪", severity: .info)
+        self.lastStatus = StatusEntry(
+            message: AppLocalization.string(
+                "status.ready",
+                locale: InterfaceLanguageOptions.locale(for: initialSettings.interfaceLanguageCode)
+            ),
+            severity: .info
+        )
         self.menuBarIconSystemImage = menuBarIconStateMachine.currentSystemImage
         self.runHistoryEntries = runHistoryStore.load(limit: 200)
         self.launchAtLoginErrorMessage = nil
@@ -175,11 +181,19 @@ final class MorphoAppModel: ObservableObject {
             persistSettings()
         } catch {
             settings.launchAtLoginPreferred = LaunchAtLoginController.isEnabled()
-            launchAtLoginErrorMessage = "开机启动设置失败：\(error.localizedDescription)"
+            launchAtLoginErrorMessage = AppLocalization.format(
+                "settings.general.launch_at_login.error",
+                locale: interfaceLocale,
+                launchAtLoginErrorReason(for: error)
+            )
             persistSettings()
             statusReporter.publish(
                 StatusEntry(
-                    message: launchAtLoginErrorMessage ?? "开机启动设置失败。",
+                    message: launchAtLoginErrorMessage
+                        ?? AppLocalization.string(
+                            "settings.general.launch_at_login.error_generic",
+                            locale: interfaceLocale
+                        ),
                     severity: .error
                 )
             )
@@ -233,10 +247,6 @@ final class MorphoAppModel: ObservableObject {
 
     var hotkeySummary: String {
         HotkeyShortcutPresentation.summary(for: settings.hotkey)
-    }
-
-    var hotkeySummaryForMenu: String {
-        hotkeyEnabled ? hotkeySummary : "已关闭"
     }
 
     var hotkeyEnabled: Bool {
@@ -317,7 +327,10 @@ final class MorphoAppModel: ObservableObject {
         guard let hotkeyService else {
             statusReporter.publish(
                 StatusEntry(
-                    message: "全局快捷键初始化失败。",
+                    message: AppLocalization.string(
+                        "status.hotkey.init_failed",
+                        locale: interfaceLocale
+                    ),
                     severity: .error
                 )
             )
@@ -329,10 +342,33 @@ final class MorphoAppModel: ObservableObject {
         } catch {
             statusReporter.publish(
                 StatusEntry(
-                    message: "快捷键注册失败，请更换组合键。",
+                    message: AppLocalization.string(
+                        "status.hotkey.register_failed",
+                        locale: interfaceLocale
+                    ),
                     severity: .error
                 )
             )
+        }
+    }
+
+    private var interfaceLocale: Locale {
+        InterfaceLanguageOptions.locale(for: settings.interfaceLanguageCode)
+    }
+
+    private func launchAtLoginErrorReason(for error: Error) -> String {
+        guard let launchError = error as? LaunchAtLoginControllerError else {
+            return error.localizedDescription
+        }
+
+        switch launchError {
+        case .unsupportedSystem:
+            return AppLocalization.string(
+                "status.launch_at_login.unsupported_system",
+                locale: interfaceLocale
+            )
+        case .registrationFailed(let reason):
+            return reason
         }
     }
 
