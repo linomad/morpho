@@ -29,6 +29,7 @@ struct SettingsSidebarView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
             }
 
             Spacer(minLength: 0)
