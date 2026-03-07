@@ -20,6 +20,7 @@ final class MorphoAppModel: ObservableObject {
     private let statusReporter: CompositeStatusReporter
     private let useCase: HandleHotkeyTranslationUseCase
     private let hotkeyService: GlobalHotkeyService?
+    private let caretLoadingOverlay: CaretLoadingOverlay
 
     private var cancellables: Set<AnyCancellable> = []
     private var inFlightTranslationTask: Task<Void, Never>?
@@ -51,6 +52,7 @@ final class MorphoAppModel: ObservableObject {
         self.apiKey = initialSettings.translationAPIKey
         self.statusCenter = statusCenter
         self.statusReporter = statusReporter
+        self.caretLoadingOverlay = CaretLoadingOverlay()
         self.lastStatus = StatusEntry(
             message: AppLocalization.string(
                 "status.ready",
@@ -103,14 +105,18 @@ final class MorphoAppModel: ObservableObject {
         }
 
         beginMenuBarIconRunningState()
+        caretLoadingOverlay.show()
 
         inFlightTranslationTask = Task { [weak self] in
             guard let self else {
                 return
             }
 
+            defer {
+                self.handleTranslationCompletion()
+            }
+
             _ = await self.useCase.execute()
-            self.handleTranslationCompletion()
         }
     }
 
@@ -373,6 +379,7 @@ final class MorphoAppModel: ObservableObject {
     }
 
     private func handleTranslationCompletion() {
+        caretLoadingOverlay.hide()
         inFlightTranslationTask = nil
         refreshRunHistory()
         transitionMenuBarIconToCompletionHold()
