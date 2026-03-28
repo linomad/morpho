@@ -81,6 +81,57 @@
   - 输入 `i'm good` 时不应再误用剪贴板旧值
   - 无选中时应翻译全文并替换
 
+## Optimization: Direct Text Injection via CGEvent
+
+**Date:** 2026-03-28
+
+### Problem
+
+The clipboard-based paste fallback (`⌘V`) was unstable in some applications:
+- Some apps don't respond to simulated keyboard shortcuts
+- The 40ms `pasteCommitInterval` was insufficient for slower apps
+- Restoring clipboard in `asyncAfter(deadline: .now() + 0.3)` could race with the paste operation
+
+### Solution
+
+Replace clipboard-based paste with direct CGEvent text injection:
+
+```swift
+// Before: Clipboard-based paste
+pasteboard.writeString(translatedText)
+try keyboard.trigger(.paste)
+wait(pasteCommitInterval)
+
+// After: Direct text injection
+try keyboard.insertText(translatedText)
+```
+
+### Implementation
+
+1. **New Protocol Method**: Added `insertText(_ text: String) throws` to `KeyboardEventInjecting`
+2. **CGEvent Implementation**: Uses `CGEvent.keyboardSetUnicodeString()` to inject text directly
+3. **Removed**: `pasteCommitInterval` parameter (no longer needed)
+4. **Removed**: Clipboard snapshot/restore logic (no longer touches clipboard)
+
+### Benefits
+
+- **Zero clipboard pollution** — Never touches the user's clipboard
+- **More compatible** — Works in apps that don't respond to `⌘V`
+- **Faster** — No clipboard operations or artificial delays
+- **Simpler** — Less code, fewer timing parameters
+
+### Changed Files
+
+- `Sources/MorphoKit/Infrastructure/Accessibility/KeyboardEventInjecting.swift`
+- `Sources/MorphoKit/Infrastructure/Accessibility/ControlledPasteTextGateway.swift`
+- `Tests/MorphoKitTests/Infrastructure/Accessibility/ControlledPasteTextGatewayTests.swift`
+
+### Status
+
+- [x] Implementation complete
+- [x] Unit tests updated
+- [ ] Manual testing in problematic apps needed
+
 ## Changed Files
 
 - `Sources/MorphoKit/Infrastructure/Accessibility/KeyboardEventInjecting.swift`

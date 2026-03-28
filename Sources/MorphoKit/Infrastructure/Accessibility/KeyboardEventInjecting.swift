@@ -9,10 +9,17 @@ enum KeyboardShortcut {
 
 protocol KeyboardEventInjecting {
     func trigger(_ shortcut: KeyboardShortcut) throws
+    func insertText(_ text: String) throws
 }
 
 enum KeyboardEventInjectionError: Error {
     case unableToCreateEvent
+}
+
+extension KeyboardEventInjecting {
+    func insertText(_ text: String) throws {
+        throw KeyboardEventInjectionError.unableToCreateEvent
+    }
 }
 
 final class SystemKeyboardEventInjector: KeyboardEventInjecting {
@@ -34,6 +41,21 @@ final class SystemKeyboardEventInjector: KeyboardEventInjecting {
         }
 
         try postCommandKey(keyCode: keyCode)
+    }
+
+    func insertText(_ text: String) throws {
+        let utf16 = Array(text.utf16)
+        guard
+            let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
+            let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false)
+        else {
+            throw KeyboardEventInjectionError.unableToCreateEvent
+        }
+
+        keyDown.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
+        keyUp.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
     }
 
     private func postCommandKey(keyCode: CGKeyCode) throws {

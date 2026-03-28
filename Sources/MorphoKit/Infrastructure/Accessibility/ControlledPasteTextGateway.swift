@@ -24,7 +24,6 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
     private let copyPollingAttempts: Int
     private let copyPollingInterval: TimeInterval
     private let selectAllSettleInterval: TimeInterval
-    private let pasteCommitInterval: TimeInterval
     private let sleep: (TimeInterval) -> Void
 
     private var sessions: [UUID: Session] = [:]
@@ -37,7 +36,6 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         self.copyPollingAttempts = 12
         self.copyPollingInterval = 0.01
         self.selectAllSettleInterval = 0.03
-        self.pasteCommitInterval = 0.04
         self.sleep = { interval in
             Thread.sleep(forTimeInterval: interval)
         }
@@ -51,7 +49,6 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         copyPollingAttempts: Int = 12,
         copyPollingInterval: TimeInterval = 0.01,
         selectAllSettleInterval: TimeInterval = 0.03,
-        pasteCommitInterval: TimeInterval = 0.04,
         sleep: @escaping (TimeInterval) -> Void = { interval in
             Thread.sleep(forTimeInterval: interval)
         }
@@ -63,7 +60,6 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         self.copyPollingAttempts = copyPollingAttempts
         self.copyPollingInterval = copyPollingInterval
         self.selectAllSettleInterval = selectAllSettleInterval
-        self.pasteCommitInterval = pasteCommitInterval
         self.sleep = sleep
     }
 
@@ -121,19 +117,12 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
             throw TranslationWorkflowError.focusedInputUnavailable
         }
 
-        let snapshot = pasteboard.snapshot()
-        defer {
-            pasteboard.restore(snapshot)
-        }
-
-        pasteboard.writeString(translatedText)
         do {
             if mode == .entireField {
                 try keyboard.trigger(.selectAll)
                 wait(selectAllSettleInterval)
             }
-            try keyboard.trigger(.paste)
-            wait(pasteCommitInterval)
+            try keyboard.insertText(translatedText)
         } catch {
             throw TranslationWorkflowError.replacementFailed
         }
