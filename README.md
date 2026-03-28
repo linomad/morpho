@@ -50,3 +50,34 @@ It keeps translation inside the writing flow, so language switching feels instan
 swift test
 swift run MorphoApp
 ```
+
+## Packaging (macOS App Bundle)
+
+Use the reusable packaging script:
+
+```bash
+./scripts/package-macos-app.sh --clean
+```
+
+Output artifacts:
+
+- `dist/Morpho.app`
+- `dist/Morpho.app.zip`
+
+Useful options:
+
+```bash
+# custom output directory
+./scripts/package-macos-app.sh --output-dir dist
+
+# sign with a stable certificate (recommended)
+./scripts/package-macos-app.sh --sign-identity "Apple Development: Your Name (TEAMID)"
+
+# inspect available signing identities
+security find-identity -v -p codesigning
+```
+
+Notes:
+
+- For stable Accessibility/TCC identity across upgrades, use `--sign-identity` with the same certificate each build.
+- Default ad-hoc signing is convenient for local testing, but macOS may treat each rebuild as a new app identity.
