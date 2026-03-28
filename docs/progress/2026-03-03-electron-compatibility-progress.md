@@ -132,6 +132,23 @@ try keyboard.insertText(translatedText)
 - [x] Unit tests updated
 - [ ] Manual testing in problematic apps needed
 
+## Known Issues
+
+详见 [app-compatibility-log.md](../compatibility/app-compatibility-log.md)
+
+### 问题摘要 (2026-03-28)
+
+| App | 问题 | 原因 |
+|-----|------|------|
+| Codex (Electron) | 文本替换失效 | CGEvent 被 Electron 层拦截 |
+| Chrome 地址栏 | 文本替换失效 | Omnibox 不响应 CGEvent |
+
+### Next Steps
+
+- [ ] 实现 CGEvent 失效时的剪贴板降级方案
+- [ ] 增强 `insertText()` 错误检测机制
+- [ ] 继续测试更多 App 并更新兼容性文档
+
 ## Changed Files
 
 - `Sources/MorphoKit/Infrastructure/Accessibility/KeyboardEventInjecting.swift`
