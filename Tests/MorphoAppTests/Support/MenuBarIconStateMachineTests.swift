@@ -5,7 +5,7 @@ final class MenuBarIconStateMachineTests: XCTestCase {
     func testInitialStateIsIdle() {
         let machine = MenuBarIconStateMachine()
         let state = machine.renderState
-        XCTAssertEqual(state.baseSymbol, "globe.asia.australia.fill")
+        XCTAssertEqual(state.baseSymbol, "m.circle.fill")
         XCTAssertNil(state.dotScale)
         XCTAssertEqual(state.dotAlpha, 0.0)
     }
@@ -35,7 +35,7 @@ final class MenuBarIconStateMachineTests: XCTestCase {
         let state = machine.renderState
         XCTAssertNotNil(state.dotScale)
         let scale = state.dotScale!
-        XCTAssertGreaterThanOrEqual(scale, 0.82)
+        XCTAssertGreaterThanOrEqual(scale, 0.68)
         XCTAssertLessThanOrEqual(scale, 1.0)
     }
 
@@ -73,13 +73,13 @@ final class MenuBarIconStateMachineTests: XCTestCase {
 
     func testBaseSymbolNeverChanges() {
         var machine = MenuBarIconStateMachine()
-        XCTAssertEqual(machine.renderState.baseSymbol, "globe.asia.australia.fill")
+        XCTAssertEqual(machine.renderState.baseSymbol, "m.circle.fill")
         machine.beginTranslation()
-        XCTAssertEqual(machine.renderState.baseSymbol, "globe.asia.australia.fill")
+        XCTAssertEqual(machine.renderState.baseSymbol, "m.circle.fill")
         machine.animationTick(deltaSeconds: 0.5)
-        XCTAssertEqual(machine.renderState.baseSymbol, "globe.asia.australia.fill")
+        XCTAssertEqual(machine.renderState.baseSymbol, "m.circle.fill")
         machine.finishTranslation()
-        XCTAssertEqual(machine.renderState.baseSymbol, "globe.asia.australia.fill")
+        XCTAssertEqual(machine.renderState.baseSymbol, "m.circle.fill")
     }
 
     func testReduceMotionProducesStaticDot() {

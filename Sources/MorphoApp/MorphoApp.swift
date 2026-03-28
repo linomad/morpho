@@ -4,15 +4,15 @@ import SwiftUI
 @main
 struct MorphoApp: App {
     private static let canvasDimension: CGFloat = 18.0
-    private static let iconSymbolPointSize: CGFloat = 13.0
+    private static let iconSymbolPointSize: CGFloat = 15.0
     private static let menuBarIconSymbolConfiguration = NSImage.SymbolConfiguration(
         pointSize: iconSymbolPointSize,
-        weight: .regular,
+        weight: .medium,
         scale: .medium
     )
-    private static let dotBaseDiameter: CGFloat = 3.5
-    private static let dotInset: CGFloat = 1.5
-    private static let dotColor: NSColor = .systemGreen
+    private static let dotBaseDiameter: CGFloat = 7.2
+    private static let dotInset: CGFloat = 0.25
+    private static let dotMaskColor: NSColor = .black
 
     @StateObject private var model = MorphoAppModel()
 
@@ -46,12 +46,14 @@ struct MorphoApp: App {
             }
             return true
         }
-        image.isTemplate = state.dotScale == nil
+        image.isTemplate = true
         return image
     }
 
     private func drawBaseIcon(_ symbolName: String, in rect: NSRect) {
         let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Morpho")
+            ?? NSImage(systemSymbolName: "m.circle.fill", accessibilityDescription: "Morpho")
+            ?? NSImage(systemSymbolName: "textformat.abc", accessibilityDescription: "Morpho")
             ?? NSImage(systemSymbolName: "globe.asia.australia.fill", accessibilityDescription: "Morpho")
             ?? NSImage()
         let configured = base.withSymbolConfiguration(Self.menuBarIconSymbolConfiguration) ?? base
@@ -69,7 +71,7 @@ struct MorphoApp: App {
         let x = rect.maxX - Self.dotInset - diameter
         let y = rect.minY + Self.dotInset
         let dotRect = NSRect(x: x, y: y, width: diameter, height: diameter)
-        let color = Self.dotColor.withAlphaComponent(alpha)
+        let color = Self.dotMaskColor.withAlphaComponent(alpha)
         color.setFill()
         let path = NSBezierPath(ovalIn: dotRect)
         path.fill()

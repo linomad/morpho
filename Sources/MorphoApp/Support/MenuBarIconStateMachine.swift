@@ -7,11 +7,13 @@ struct MenuBarIconRenderState: Equatable {
 }
 
 struct MenuBarIconStateMachine {
-    static let breathingCycleDuration: TimeInterval = 1.25
+    static let breathingCycleDuration: TimeInterval = 1.35
     static let fadeOutDuration: TimeInterval = 0.15
-    private static let baseSymbol = "globe.asia.australia.fill"
-    private static let minScale: CGFloat = 0.82
+    private static let baseSymbol = "m.circle.fill"
+    private static let minScale: CGFloat = 0.68
     private static let maxScale: CGFloat = 1.0
+    private static let minAlpha: CGFloat = 0.58
+    private static let maxAlpha: CGFloat = 1.0
 
     var reduceMotion: Bool = false
 
@@ -88,6 +90,10 @@ struct MenuBarIconStateMachine {
         phase = .fadingOut(elapsed: 0, lastScale: currentScale)
     }
 
+    mutating func resetToIdle() {
+        phase = .idle
+    }
+
     private static func breathingScale(at elapsed: TimeInterval) -> CGFloat {
         let t = elapsed / breathingCycleDuration
         let sine = sin(t * 2.0 * .pi)
@@ -99,6 +105,6 @@ struct MenuBarIconStateMachine {
         let t = elapsed / breathingCycleDuration
         let sine = sin(t * 2.0 * .pi)
         let normalized = (sine + 1.0) / 2.0
-        return 0.85 + 0.15 * normalized
+        return minAlpha + (maxAlpha - minAlpha) * normalized
     }
 }

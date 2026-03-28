@@ -31,6 +31,8 @@ final class MorphoAppModel: ObservableObject {
     private var menuBarIconStateMachine: MenuBarIconStateMachine
     private var menuBarIconAnimationTimer: Timer?
     private var dotDelayTimer: Timer?
+    private var dotMinimumDisplayTask: Task<Void, Never>?
+    private var dotPresentationGeneration: UInt64 = 0
     private var dotShownAt: Date?
     private var dotWasShown: Bool = false
 
@@ -112,8 +114,9 @@ final class MorphoAppModel: ObservableObject {
             return
         }
 
+        prepareDotIndicatorForNewTranslation()
         caretLoadingOverlay.show()
-        startDotDelayTimer()
+        startDotDelayTimer(for: dotPresentationGeneration)
 
         inFlightTranslationTask = Task { [weak self] in
             guard let self else {
@@ -389,29 +392,41 @@ final class MorphoAppModel: ObservableObject {
     // MARK: - Translation Completion & Dot Timing
 
     private func handleTranslationCompletion() {
+        let currentGeneration = dotPresentationGeneration
         caretLoadingOverlay.hide()
         inFlightTranslationTask = nil
         refreshRunHistory()
         cancelDotDelayTimer()
+        cancelDotMinimumDisplayTask()
 
         if dotWasShown {
             let elapsed = dotShownAt.map { Date().timeIntervalSince($0) } ?? Self.minimumDisplayDuration
             let remaining = Self.minimumDisplayDuration - elapsed
             if remaining > 0 {
-                Task {
+                dotMinimumDisplayTask = Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .seconds(remaining))
                     guard !Task.isCancelled else { return }
-                    self.beginDotFadeOut()
+                    self?.beginDotFadeOutIfCurrent(generation: currentGeneration)
                 }
             } else {
-                beginDotFadeOut()
+                beginDotFadeOutIfCurrent(generation: currentGeneration)
             }
         } else {
             resetDotState()
         }
     }
 
-    private func beginDotFadeOut() {
+    private func beginDotFadeOutIfCurrent(generation: UInt64) {
+        guard generation == dotPresentationGeneration else {
+            return
+        }
+        guard inFlightTranslationTask == nil else {
+            return
+        }
+        guard dotWasShown, menuBarIconStateMachine.isLoading else {
+            return
+        }
+        dotMinimumDisplayTask = nil
         menuBarIconStateMachine.finishTranslation()
         menuBarIconRenderState = menuBarIconStateMachine.renderState
         // Animation timer continues to drive fade-out; it will stop when idle
@@ -419,7 +434,8 @@ final class MorphoAppModel: ObservableObject {
 
     // MARK: - Dot Delay Timer
 
-    private func startDotDelayTimer() {
+    private func startDotDelayTimer(for generation: UInt64) {
+        cancelDotDelayTimer()
         dotWasShown = false
         dotShownAt = nil
         dotDelayTimer = Timer.scheduledTimer(
@@ -427,7 +443,7 @@ final class MorphoAppModel: ObservableObject {
             repeats: false
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.showDotAfterDelay()
+                self?.showDotAfterDelayIfCurrent(generation: generation)
             }
         }
     }
@@ -437,7 +453,10 @@ final class MorphoAppModel: ObservableObject {
         dotDelayTimer = nil
     }
 
-    private func showDotAfterDelay() {
+    private func showDotAfterDelayIfCurrent(generation: UInt64) {
+        guard generation == dotPresentationGeneration else {
+            return
+        }
         guard inFlightTranslationTask != nil else {
             return
         }
@@ -480,8 +499,25 @@ final class MorphoAppModel: ObservableObject {
     }
 
     private func resetDotState() {
+        cancelDotDelayTimer()
+        cancelDotMinimumDisplayTask()
         dotWasShown = false
         dotShownAt = nil
+    }
+
+    private func cancelDotMinimumDisplayTask() {
+        dotMinimumDisplayTask?.cancel()
+        dotMinimumDisplayTask = nil
+    }
+
+    private func prepareDotIndicatorForNewTranslation() {
+        dotPresentationGeneration &+= 1
+        if menuBarIconStateMachine.isAnimating {
+            stopMenuBarIconAnimationTimer()
+            menuBarIconStateMachine.resetToIdle()
+            menuBarIconRenderState = menuBarIconStateMachine.renderState
+        }
+        resetDotState()
     }
 
     // MARK: - Reduce Motion
@@ -493,7 +529,13 @@ final class MorphoAppModel: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.menuBarIconStateMachine.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                guard let self else {
+                    return
+                }
+                self.menuBarIconStateMachine.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                if self.menuBarIconStateMachine.isAnimating {
+                    self.menuBarIconRenderState = self.menuBarIconStateMachine.renderState
+                }
             }
         }
     }
