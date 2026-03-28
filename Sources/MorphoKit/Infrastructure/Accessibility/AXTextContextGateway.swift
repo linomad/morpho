@@ -15,6 +15,7 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
     private let maxChildSearchDepth = 2
     private let manualAccessibilityRetryDelay: TimeInterval = 0.02
     private let manualAccessibilityAttribute = "AXManualAccessibility"
+    private let enhancedUserInterfaceAttribute = "AXEnhancedUserInterface"
     private let sleep: (TimeInterval) -> Void
     private var focusedElements: [UUID: AXUIElement] = [:]
 
@@ -157,6 +158,11 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
         _ = AXUIElementSetAttributeValue(
             appElement,
             manualAccessibilityAttribute as CFString,
+            kCFBooleanTrue
+        )
+        _ = AXUIElementSetAttributeValue(
+            appElement,
+            enhancedUserInterfaceAttribute as CFString,
             kCFBooleanTrue
         )
     }

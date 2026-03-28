@@ -86,9 +86,13 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
             settings: settings
         )
 
+        let truncatedResult = translatedText.count > 50
+            ? String(translatedText.prefix(50)) + "…"
+            : translatedText
+
         statusSink.publish(
             StatusEntry(
-                message: "翻译完成",
+                message: "翻译完成: \(truncatedResult)",
                 severity: .success
             )
         )

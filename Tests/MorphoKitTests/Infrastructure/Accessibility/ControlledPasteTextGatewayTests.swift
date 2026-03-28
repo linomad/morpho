@@ -14,7 +14,7 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
             case .copy:
                 pasteboard.simulateCopySelection("selected text")
             case .paste:
-                XCTFail("replace should inject text directly instead of using paste")
+                break
             }
         }
 
@@ -24,16 +24,16 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
             focusedAppBundleIdProvider: { "com.google.Chrome" },
             secureFieldDetector: { false },
             copyPollingAttempts: 1,
-            copyPollingInterval: 0
+            copyPollingInterval: 0,
+            pasteSettleInterval: 0
         )
 
         let context = try gateway.captureFocusedContext()
         try gateway.replace(in: context, with: "translated text", mode: .selection)
 
         XCTAssertEqual(context.selectedText, "selected text")
-        XCTAssertEqual(keyboard.insertedTexts, ["translated text"])
+        XCTAssertEqual(keyboard.triggeredShortcuts, [.copy, .paste])
         XCTAssertEqual(pasteboard.currentString, "clipboard-original")
-        XCTAssertEqual(keyboard.triggeredShortcuts, [.copy])
     }
 
     func testCaptureReadsEntireFieldWhenSelectionIsMissing() throws {
@@ -89,7 +89,7 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
             case .selectAll:
                 didSelectAll = true
             case .paste:
-                XCTFail("replace should inject text directly instead of using paste")
+                break
             }
         }
 
@@ -99,16 +99,16 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
             focusedAppBundleIdProvider: { "com.google.Chrome" },
             secureFieldDetector: { false },
             copyPollingAttempts: 1,
-            copyPollingInterval: 0
+            copyPollingInterval: 0,
+            pasteSettleInterval: 0
         )
 
         let context = try gateway.captureFocusedContext()
         try gateway.replace(in: context, with: "translated text", mode: .entireField)
 
-        XCTAssertEqual(keyboard.insertedTexts, ["translated text"])
         XCTAssertEqual(
             keyboard.triggeredShortcuts,
-            [.copy, .selectAll, .copy, .selectAll]
+            [.copy, .selectAll, .copy, .selectAll, .paste]
         )
         XCTAssertEqual(pasteboard.currentString, "clipboard-original")
     }
@@ -238,7 +238,7 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
         XCTAssertEqual(pasteboard.currentString, "clipboard-original")
     }
 
-    func testReplaceInjectsTranslatedTextWithoutUsingPasteShortcut() throws {
+    func testReplacePastesTranslatedTextAndRestoresClipboard() throws {
         let pasteboard = PasteboardFake(initialString: "clipboard-original")
         let keyboard = KeyboardSpy()
 
@@ -254,14 +254,14 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
             focusedAppBundleIdProvider: { "com.google.Chrome" },
             secureFieldDetector: { false },
             copyPollingAttempts: 1,
-            copyPollingInterval: 0
+            copyPollingInterval: 0,
+            pasteSettleInterval: 0
         )
 
         let context = try gateway.captureFocusedContext()
         try gateway.replace(in: context, with: "translated text", mode: .selection)
 
-        XCTAssertEqual(keyboard.insertedTexts, ["translated text"])
-        XCTAssertEqual(keyboard.triggeredShortcuts, [.copy])
+        XCTAssertEqual(keyboard.triggeredShortcuts, [.copy, .paste])
         XCTAssertEqual(pasteboard.currentString, "clipboard-original")
     }
 }
@@ -334,6 +334,10 @@ private final class PasteboardFake: PasteboardAccessing {
         item.setString(value, forType: .string)
         items = [item]
         changeCount += 1
+    }
+
+    func writeStringTransient(_ value: String) {
+        writeString(value)
     }
 
     func simulateCopySelection(_ value: String) {
