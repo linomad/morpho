@@ -14,6 +14,13 @@ Morpho started from one concrete problem: in chat, article writing, and other ty
 
 It keeps translation inside the writing flow, so language switching feels instant instead of disruptive.
 
+### About the Name
+
+**Morpho** is named after the concept of *morphing* — transforming something smoothly into another form.
+This project is not just about translation in the traditional sense. It is about reshaping text already being typed, in place, without interrupting the user's flow.
+With a single shortcut, language can shift naturally inside any input context.
+**Morpho** captures that feeling: lightweight, seamless, and alive.
+
 ## Design Principles
 
 - Solve one core problem deeply: help users translate what they are typing instantly, without breaking their writing flow.
@@ -36,13 +43,6 @@ It keeps translation inside the writing flow, so language switching feels instan
 - Does not process password/secure input fields.
 - Non-standard custom-drawn controls may not be directly readable/writable.
 - Clipboard-based path is used only as the last fallback.
-
-## Architecture
-
-- `Sources/MorphoKit/Domain`: domain models and contracts
-- `Sources/MorphoKit/Application`: use-case orchestration and routing
-- `Sources/MorphoKit/Infrastructure`: AX, controlled paste, cloud translation, hotkey, notifications, persistence
-- `Sources/MorphoApp`: menu bar UI and settings
 
 ## Development
 
