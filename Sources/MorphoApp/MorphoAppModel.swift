@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import MorphoKit
@@ -6,11 +7,14 @@ import MorphoKit
 final class MorphoAppModel: ObservableObject {
     private static let supportedLanguageIdentifiers = LanguageOptions.all.map(\.id)
     private static let defaultSourceLanguage = Locale.Language(identifier: "en")
+    private static let animationTimerInterval: TimeInterval = 0.033
+    private static let delayBeforeShow: TimeInterval = 0.2
+    private static let minimumDisplayDuration: TimeInterval = 0.35
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
     @Published private(set) var lastStatus: StatusEntry
-    @Published private(set) var menuBarIconSystemImage: String
+    @Published private(set) var menuBarIconRenderState: MenuBarIconRenderState
     @Published private(set) var runHistoryEntries: [RunHistoryEntry]
     @Published private(set) var launchAtLoginErrorMessage: String?
 
@@ -26,12 +30,15 @@ final class MorphoAppModel: ObservableObject {
     private var inFlightTranslationTask: Task<Void, Never>?
     private var menuBarIconStateMachine: MenuBarIconStateMachine
     private var menuBarIconAnimationTimer: Timer?
-    private var menuBarIconCompletionHoldTask: Task<Void, Never>?
+    private var dotDelayTimer: Timer?
+    private var dotShownAt: Date?
+    private var dotWasShown: Bool = false
 
     init() {
         let settingsStore = UserDefaultsSettingsStore()
         let runHistoryStore = FileRunHistoryStore()
-        let menuBarIconStateMachine = MenuBarIconStateMachine()
+        var menuBarIconStateMachine = MenuBarIconStateMachine()
+        menuBarIconStateMachine.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         var initialSettings = settingsStore.load()
         if case .auto = initialSettings.sourceLanguage,
            initialSettings.autoSwitchLanguagePair == nil {
@@ -60,10 +67,10 @@ final class MorphoAppModel: ObservableObject {
             ),
             severity: .info
         )
-        self.menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
+        self.menuBarIconStateMachine = menuBarIconStateMachine
+        self.menuBarIconRenderState = menuBarIconStateMachine.renderState
         self.runHistoryEntries = runHistoryStore.load(limit: 200)
         self.launchAtLoginErrorMessage = nil
-        self.menuBarIconStateMachine = menuBarIconStateMachine
 
         let textGateway = LayeredTextContextGateway()
         let siliconFlowHTTPClient = RetryingCloudHTTPClient(
@@ -97,6 +104,7 @@ final class MorphoAppModel: ObservableObject {
         bindStatus()
         bindHotkey()
         registerHotkeyIfPossible()
+        observeReduceMotionChanges()
     }
 
     func triggerTranslation() {
@@ -104,8 +112,8 @@ final class MorphoAppModel: ObservableObject {
             return
         }
 
-        beginMenuBarIconRunningState()
         caretLoadingOverlay.show()
+        startDotDelayTimer()
 
         inFlightTranslationTask = Task { [weak self] in
             guard let self else {
@@ -378,66 +386,80 @@ final class MorphoAppModel: ObservableObject {
         }
     }
 
+    // MARK: - Translation Completion & Dot Timing
+
     private func handleTranslationCompletion() {
         caretLoadingOverlay.hide()
         inFlightTranslationTask = nil
         refreshRunHistory()
-        transitionMenuBarIconToCompletionHold()
-    }
+        cancelDotDelayTimer()
 
-    private func beginMenuBarIconRunningState() {
-        menuBarIconCompletionHoldTask?.cancel()
-        menuBarIconCompletionHoldTask = nil
-        menuBarIconStateMachine.beginTranslation()
-        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
-        startMenuBarIconAnimationTimerIfNeeded()
-    }
-
-    private func transitionMenuBarIconToCompletionHold() {
-        stopMenuBarIconAnimationTimer()
-        menuBarIconStateMachine.finishTranslation()
-        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
-        menuBarIconCompletionHoldTask?.cancel()
-
-        menuBarIconCompletionHoldTask = Task { [weak self] in
-            guard let self else {
-                return
+        if dotWasShown {
+            let elapsed = dotShownAt.map { Date().timeIntervalSince($0) } ?? Self.minimumDisplayDuration
+            let remaining = Self.minimumDisplayDuration - elapsed
+            if remaining > 0 {
+                Task {
+                    try? await Task.sleep(for: .seconds(remaining))
+                    guard !Task.isCancelled else { return }
+                    self.beginDotFadeOut()
+                }
+            } else {
+                beginDotFadeOut()
             }
-
-            do {
-                try await Task.sleep(for: .seconds(MenuBarIconStateMachine.fadeOutDuration))
-            } catch {
-                return
-            }
-
-            guard !Task.isCancelled else {
-                return
-            }
-
-            self.resetMenuBarIconToIdle()
+        } else {
+            resetDotState()
         }
     }
 
-    private func resetMenuBarIconToIdle() {
-        menuBarIconCompletionHoldTask = nil
-        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
+    private func beginDotFadeOut() {
+        menuBarIconStateMachine.finishTranslation()
+        menuBarIconRenderState = menuBarIconStateMachine.renderState
+        // Animation timer continues to drive fade-out; it will stop when idle
     }
 
-    private func startMenuBarIconAnimationTimerIfNeeded() {
-        stopMenuBarIconAnimationTimer()
-        guard menuBarIconStateMachine.isAnimating else {
+    // MARK: - Dot Delay Timer
+
+    private func startDotDelayTimer() {
+        dotWasShown = false
+        dotShownAt = nil
+        dotDelayTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.delayBeforeShow,
+            repeats: false
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.showDotAfterDelay()
+            }
+        }
+    }
+
+    private func cancelDotDelayTimer() {
+        dotDelayTimer?.invalidate()
+        dotDelayTimer = nil
+    }
+
+    private func showDotAfterDelay() {
+        guard inFlightTranslationTask != nil else {
             return
         }
+        dotWasShown = true
+        dotShownAt = Date()
+        menuBarIconStateMachine.beginTranslation()
+        menuBarIconRenderState = menuBarIconStateMachine.renderState
+        startMenuBarIconAnimationTimer()
+    }
 
+    // MARK: - Animation Timer
+
+    private func startMenuBarIconAnimationTimer() {
+        stopMenuBarIconAnimationTimer()
         let timer = Timer(
-            timeInterval: 1.0 / 30.0,
+            timeInterval: Self.animationTimerInterval,
             repeats: true
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.advanceMenuBarIconAnimation()
             }
         }
-
         menuBarIconAnimationTimer = timer
         RunLoop.main.add(timer, forMode: .common)
     }
@@ -448,12 +470,31 @@ final class MorphoAppModel: ObservableObject {
     }
 
     private func advanceMenuBarIconAnimation() {
-        guard inFlightTranslationTask != nil else {
-            stopMenuBarIconAnimationTimer()
-            return
-        }
+        menuBarIconStateMachine.animationTick(deltaSeconds: Self.animationTimerInterval)
+        menuBarIconRenderState = menuBarIconStateMachine.renderState
 
-        menuBarIconStateMachine.animationTick(deltaSeconds: 1.0 / 30.0)
-        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
+        if !menuBarIconStateMachine.isAnimating {
+            stopMenuBarIconAnimationTimer()
+            resetDotState()
+        }
+    }
+
+    private func resetDotState() {
+        dotWasShown = false
+        dotShownAt = nil
+    }
+
+    // MARK: - Reduce Motion
+
+    private func observeReduceMotionChanges() {
+        NotificationCenter.default.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.menuBarIconStateMachine.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            }
+        }
     }
 }
