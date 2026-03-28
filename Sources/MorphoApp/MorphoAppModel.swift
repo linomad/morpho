@@ -60,7 +60,7 @@ final class MorphoAppModel: ObservableObject {
             ),
             severity: .info
         )
-        self.menuBarIconSystemImage = menuBarIconStateMachine.currentSystemImage
+        self.menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
         self.runHistoryEntries = runHistoryStore.load(limit: 200)
         self.launchAtLoginErrorMessage = nil
         self.menuBarIconStateMachine = menuBarIconStateMachine
@@ -388,13 +388,15 @@ final class MorphoAppModel: ObservableObject {
     private func beginMenuBarIconRunningState() {
         menuBarIconCompletionHoldTask?.cancel()
         menuBarIconCompletionHoldTask = nil
-        menuBarIconSystemImage = menuBarIconStateMachine.beginTranslation()
+        menuBarIconStateMachine.beginTranslation()
+        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
         startMenuBarIconAnimationTimerIfNeeded()
     }
 
     private func transitionMenuBarIconToCompletionHold() {
         stopMenuBarIconAnimationTimer()
-        menuBarIconSystemImage = menuBarIconStateMachine.finishTranslation()
+        menuBarIconStateMachine.finishTranslation()
+        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
         menuBarIconCompletionHoldTask?.cancel()
 
         menuBarIconCompletionHoldTask = Task { [weak self] in
@@ -403,7 +405,7 @@ final class MorphoAppModel: ObservableObject {
             }
 
             do {
-                try await Task.sleep(for: .seconds(MenuBarIconStateMachine.completionHoldDuration))
+                try await Task.sleep(for: .seconds(MenuBarIconStateMachine.fadeOutDuration))
             } catch {
                 return
             }
@@ -418,7 +420,7 @@ final class MorphoAppModel: ObservableObject {
 
     private func resetMenuBarIconToIdle() {
         menuBarIconCompletionHoldTask = nil
-        menuBarIconSystemImage = menuBarIconStateMachine.completionHoldTimeout()
+        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
     }
 
     private func startMenuBarIconAnimationTimerIfNeeded() {
@@ -428,7 +430,7 @@ final class MorphoAppModel: ObservableObject {
         }
 
         let timer = Timer(
-            timeInterval: MenuBarIconStateMachine.swapInterval,
+            timeInterval: 1.0 / 30.0,
             repeats: true
         ) { [weak self] _ in
             Task { @MainActor in
@@ -451,6 +453,7 @@ final class MorphoAppModel: ObservableObject {
             return
         }
 
-        menuBarIconSystemImage = menuBarIconStateMachine.animationTick()
+        menuBarIconStateMachine.animationTick(deltaSeconds: 1.0 / 30.0)
+        menuBarIconSystemImage = menuBarIconStateMachine.renderState.baseSymbol
     }
 }
