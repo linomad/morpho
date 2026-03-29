@@ -4,12 +4,6 @@ import SwiftUI
 @main
 struct MorphoApp: App {
     private static let canvasDimension: CGFloat = 18.0
-    private static let iconSymbolPointSize: CGFloat = 15.0
-    private static let menuBarIconSymbolConfiguration = NSImage.SymbolConfiguration(
-        pointSize: iconSymbolPointSize,
-        weight: .medium,
-        scale: .medium
-    )
     private static let dotBaseDiameter: CGFloat = 7.2
     private static let dotInset: CGFloat = 0.25
     private static let dotMaskColor: NSColor = .black
@@ -40,7 +34,7 @@ struct MorphoApp: App {
     private func menuBarIcon(for state: MenuBarIconRenderState) -> NSImage {
         let canvas = NSSize(width: Self.canvasDimension, height: Self.canvasDimension)
         let image = NSImage(size: canvas, flipped: false) { rect in
-            self.drawBaseIcon(state.baseSymbol, in: rect)
+            self.drawBaseIcon(in: rect)
             if let dotScale = state.dotScale, state.dotAlpha > 0 {
                 self.drawDot(scale: dotScale, alpha: state.dotAlpha, in: rect)
             }
@@ -50,20 +44,20 @@ struct MorphoApp: App {
         return image
     }
 
-    private func drawBaseIcon(_ symbolName: String, in rect: NSRect) {
-        let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Morpho")
-            ?? NSImage(systemSymbolName: "m.circle.fill", accessibilityDescription: "Morpho")
-            ?? NSImage(systemSymbolName: "textformat.abc", accessibilityDescription: "Morpho")
-            ?? NSImage(systemSymbolName: "globe.asia.australia.fill", accessibilityDescription: "Morpho")
-            ?? NSImage()
-        let configured = base.withSymbolConfiguration(Self.menuBarIconSymbolConfiguration) ?? base
-        configured.isTemplate = true
-        let iconSize = configured.size
+    private static let menuBarBaseIcon: NSImage? = {
+        guard let img = Bundle.module.image(forResource: "morpho-menubar") else { return nil }
+        img.isTemplate = true
+        return img
+    }()
+
+    private func drawBaseIcon(in rect: NSRect) {
+        guard let base = Self.menuBarBaseIcon else { return }
+        let iconSize = base.size
         let origin = NSPoint(
             x: (rect.width - iconSize.width) / 2,
             y: (rect.height - iconSize.height) / 2
         )
-        configured.draw(in: NSRect(origin: origin, size: iconSize))
+        base.draw(in: NSRect(origin: origin, size: iconSize))
     }
 
     private func drawDot(scale: CGFloat, alpha: CGFloat, in rect: NSRect) {
