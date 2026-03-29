@@ -113,4 +113,31 @@
 |--------|------|---------|------|
 | ~~P0~~ | ~~Electron 文本替换失效~~ | ~~Electron 应用用户~~ | ✅ 已修复 (2026-03-28) |
 | P1 | Chrome 地址栏失效 | Chrome 重度用户 | 待修复 |
-| ~~P2~~ | ~~静默失败无反馈~~ | ~~调试困难~~ | ✅ 已修复 — 状态消息包含翻译结果 (2026-03-28) |
+| P2 | Caret Loading Overlay 在 Web/Electron 不显示 | Web/Electron 用户 | 待修复（fallback 到鼠标位置） |
+| ~~P3~~ | ~~静默失败无反馈~~ | ~~调试困难~~ | ✅ 已修复 — 状态消息包含翻译结果 (2026-03-28) |
+
+---
+
+## 近期修复 (2026-03-28)
+
+### Electron/Chromium 兼容性
+
+**问题**：Electron 应用中翻译后文本无法正确替换。
+
+**根因**：CGEvent.keyboardSetUnicodeString() 在 Electron 自绘组件中失效。
+
+**解决方案**：回退到剪贴板粘贴方案（⌘V）+ TransientType 标记。
+
+**涉及提交**：
+- `4ccfd3a` — refactor: replace clipboard paste with CGEvent direct text injection
+- `8c1af04` — fix: restore clipboard paste fallback for Electron/Chromium compatibility
+- `c50c3e3` — refactor: rewrite MenuBarIconStateMachine with breathing dot phase
+- `a1c6975` — feat: menu bar breathing dot indicator during translation
+- `242a32f` — refactor: tune menu bar icon rendering and busy indicator behavior
+
+**测试验证**：
+| 应用 | 翻译触发 | 文本替换 | 状态 |
+|------|---------|---------|------|
+| Codex App | ✅ | ✅ | ✅ |
+| Chrome textarea | ✅ | ✅ | ✅ |
+| Chrome 地址栏 | ❌ | ❌ | 待处理 |

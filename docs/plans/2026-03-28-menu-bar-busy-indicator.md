@@ -1,6 +1,18 @@
 # Menu Bar Busy Indicator Implementation Plan
 
-> **Status:** COMPLETED + TUNED (2026-03-28)
+> **Status:** COMPLETED + TUNED ✅ (2026-03-28)
+
+**实际提交记录：**
+- `c50c3e3` — refactor: rewrite MenuBarIconStateMachine with breathing dot phase
+- `a1c6975` — feat: menu bar breathing dot indicator during translation
+- `242a32f` — refactor: tune menu bar icon rendering and busy indicator behavior
+- `7d6a065` — design: replace geometric M with Gloock typographic brand icon, add font variants
+- `0a2c8af` — feat: replace SF Symbol menu bar icon with Gloock typographic M, support light/dark via template image
+- `51b928b` — Revert "feat: replace SF Symbol menu bar icon with Gloock typographic M, support light/dark via template image"
+- `5d434c9` — feat: add app icon from morpho-app-icon.png, all macOS sizes
+- `6f65a45` — fix: generate AppIcon.icns and set CFBundleIconFile in app bundle
+
+**测试状态：** 所有测试通过
 
 **Goal:** Replace the globe-cycling menu bar animation with a static globe + breathing dot overlay to indicate active translation.
 
