@@ -135,6 +135,25 @@ echo "==> Assembling app bundle at ${APP_PATH}"
 cp "${BIN_PATH}" "${MACOS_DIR}/${PRODUCT_NAME}"
 cp -R "${RESOURCE_BUNDLE_PATH}" "${RESOURCES_DIR}/"
 
+# Build AppIcon.icns from Assets.xcassets/AppIcon.appiconset PNGs
+APPICONSET="${REPO_ROOT}/Sources/MorphoApp/Resources/Assets.xcassets/AppIcon.appiconset"
+if [[ -d "${APPICONSET}" ]]; then
+  echo "==> Generating AppIcon.icns"
+  ICONSET_TMP="$(mktemp -d)/AppIcon.iconset"
+  mkdir -p "${ICONSET_TMP}"
+  cp "${APPICONSET}/AppIcon-16.png"     "${ICONSET_TMP}/icon_16x16.png"
+  cp "${APPICONSET}/AppIcon-16@2x.png"  "${ICONSET_TMP}/icon_16x16@2x.png"
+  cp "${APPICONSET}/AppIcon-32.png"     "${ICONSET_TMP}/icon_32x32.png"
+  cp "${APPICONSET}/AppIcon-32@2x.png"  "${ICONSET_TMP}/icon_32x32@2x.png"
+  cp "${APPICONSET}/AppIcon-128.png"    "${ICONSET_TMP}/icon_128x128.png"
+  cp "${APPICONSET}/AppIcon-128@2x.png" "${ICONSET_TMP}/icon_128x128@2x.png"
+  cp "${APPICONSET}/AppIcon-256.png"    "${ICONSET_TMP}/icon_256x256.png"
+  cp "${APPICONSET}/AppIcon-256@2x.png" "${ICONSET_TMP}/icon_256x256@2x.png"
+  cp "${APPICONSET}/AppIcon-512.png"    "${ICONSET_TMP}/icon_512x512.png"
+  cp "${APPICONSET}/AppIcon-512@2x.png" "${ICONSET_TMP}/icon_512x512@2x.png"
+  iconutil -c icns -o "${RESOURCES_DIR}/AppIcon.icns" "${ICONSET_TMP}"
+fi
+
 GIT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 BUILD_TIME="$(date "+%Y-%m-%d %H:%M:%S %z")"
 
@@ -163,6 +182,8 @@ cat > "${APP_CONTENTS}/Info.plist" <<EOF
   <string>${BUILD_NUMBER}</string>
   <key>LSMinimumSystemVersion</key>
   <string>${MINIMUM_MACOS}</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>LSUIElement</key>
   <true/>
   <key>NSPrincipalClass</key>
