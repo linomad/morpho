@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "design-dna": {
+      "source": "zanwei/design-dna",
+      "sourceType": "github",
+      "computedHash": "c58a19bc1f26551055a4257a104f25ee50d4835f6dc288a92144decffd91eef8"
+    },
+    "swiftui-pro": {
+      "source": "twostraws/swiftui-agent-skill",
+      "sourceType": "github",
+      "computedHash": "ce653d19fd00a4874489003025e9235be542e7134ff3c543e20afeb53fc3bc9a"
+    }
+  }
+}

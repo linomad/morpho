@@ -1,0 +1,50 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Deep Warm Black (Matching reference cards) -->
+  <rect width="1600" height="900" fill="#14110F" />
+
+  <defs>
+    <filter id="amber-glow">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <linearGradient id="grad-warm-active" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D4A26C" stop-opacity="0" />
+      <stop offset="50%" stop-color="#D4A26C" />
+      <stop offset="100%" stop-color="#D4A26C" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="grad-warm-bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D4A26C" />
+      <stop offset="100%" stop-color="#D4A26C" stop-opacity="0.3" />
+    </linearGradient>
+  </defs>
+
+  <!-- Horizontal "Text" Flow -->
+  <g transform="translate(200, 450)">
+    <!-- Source Segments (Untranslated, Muted Warm Stroke) -->
+    <g opacity="0.3">
+      <rect x="0" y="-10" width="60" height="20" rx="2" fill="none" stroke="#4D4238" stroke-width="1.5" />
+      <rect x="80" y="-10" width="120" height="20" rx="2" fill="none" stroke="#4D4238" stroke-width="1.5" />
+      <rect x="220" y="-10" width="40" height="20" rx="2" fill="none" stroke="#4D4238" stroke-width="1.5" />
+      <rect x="280" y="-10" width="180" height="20" rx="2" fill="none" stroke="#4D4238" stroke-width="1.5" />
+      <rect x="480" y="-10" width="90" height="20" rx="2" fill="none" stroke="#4D4238" stroke-width="1.5" />
+    </g>
+
+    <!-- The Active Cursor / Trigger (Bone White Accent) -->
+    <rect x="595" y="-100" width="3" height="200" fill="url(#grad-warm-active)" filter="url(#amber-glow)" />
+    <circle cx="596.5" cy="0" r="3.5" fill="#F2EFE9" filter="url(#amber-glow)" />
+
+    <!-- Target Segments (Translated, Solid Amber) -->
+    <g transform="translate(620, 0)">
+      <rect x="0" y="-10" width="140" height="20" rx="2" fill="url(#grad-warm-bar)" filter="url(#amber-glow)" />
+      <rect x="160" y="-10" width="80" height="20" rx="2" fill="#D4A26C" opacity="0.8" />
+      <rect x="260" y="-10" width="200" height="20" rx="2" fill="#D4A26C" opacity="0.6" />
+      <rect x="480" y="-10" width="110" height="20" rx="2" fill="#D4A26C" opacity="0.4" />
+      <rect x="610" y="-10" width="70" height="20" rx="2" fill="#D4A26C" opacity="0.2" />
+    </g>
+  </g>
+
+  <!-- Subtle UI context hints: Muted Earth Tones -->
+  <path d="M 200,400 L 1400,400" stroke="#2B2520" stroke-width="1" opacity="0.3" />
+  <path d="M 200,500 L 1400,500" stroke="#2B2520" stroke-width="1" opacity="0.3" />
+
+</svg>

@@ -21,9 +21,11 @@ struct MorphoMenuView: View {
             )
             .font(.subheadline)
 
-            Text(model.lastStatus.message)
+            Text(truncatedStatusMessage)
                 .font(.caption)
                 .foregroundStyle(color(for: model.lastStatus.severity))
+                .lineLimit(1)
+                .truncationMode(.tail)
 
             Divider()
 
@@ -49,6 +51,17 @@ struct MorphoMenuView: View {
         }
 
         return localized("menu.hotkey.disabled")
+    }
+
+    private var truncatedStatusMessage: String {
+        if model.lastStatus.message.hasPrefix("翻译完成") || model.lastStatus.message.hasPrefix("Translation Complete") {
+            return localized("status.translation_complete")
+        }
+        let maxLength = 50
+        if model.lastStatus.message.count > maxLength {
+            return String(model.lastStatus.message.prefix(maxLength)) + "…"
+        }
+        return model.lastStatus.message
     }
 
     private func color(for severity: StatusSeverity) -> Color {

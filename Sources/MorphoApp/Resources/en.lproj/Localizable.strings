@@ -75,3 +75,4 @@
 "status.hotkey.register_failed" = "Failed to register hotkey. Please choose another shortcut.";
 "status.launch_at_login.unsupported_system" = "Current macOS version does not support launch-at-login configuration.";
 "status.ready" = "Ready";
+"status.translation_complete" = "Translation Complete";

@@ -75,3 +75,4 @@
 "status.hotkey.register_failed" = "快捷键注册失败，请更换组合键。";
 "status.launch_at_login.unsupported_system" = "当前系统版本不支持开机启动配置。";
 "status.ready" = "准备就绪";
+"status.translation_complete" = "翻译完成";
