@@ -15,6 +15,29 @@ OUT   = "/Users/zhengyuelin/Things/morpho/assets/morpho-app-icon.png"
 
 FONTS_DIR = "/Users/zhengyuelin/.claude/skills/canvas-design/canvas-fonts"
 
+# Apple macOS Sequoia production template:
+# The app icon plate in a 1024 canvas is 824x824 with 100px margins.
+PLATE_SIZE_1X = 824
+PLATE_MARGIN_1X = 100
+PLATE_SCALE = PLATE_SIZE_1X / 1024.0
+PLATE_SIZE = int(SZ * PLATE_SCALE)
+
+FONT_DIR_CANDIDATES = [
+    os.environ.get("MORPHO_ICON_FONTS_DIR", ""),
+    "/Users/zhengyuelin/.claude/plugins/cache/anthropic-agent-skills/document-skills/69c0b1a06741/skills/canvas-design/canvas-fonts",
+    FONTS_DIR,
+]
+
+def resolve_fonts_dir():
+    for path in FONT_DIR_CANDIDATES:
+        if path and os.path.isdir(path):
+            return path
+    raise FileNotFoundError(
+        "Cannot locate icon font directory. Set MORPHO_ICON_FONTS_DIR to a folder containing Gloock-Regular.ttf."
+    )
+
+FONTS_DIR = resolve_fonts_dir()
+
 cx, cy = SZ / 2.0, SZ / 2.0
 
 xs = np.linspace(0, SZ-1, SZ, dtype=np.float32)
@@ -46,9 +69,9 @@ M_COLOR = (240, 236, 225, 255)   # warm cream
 
 font_path = os.path.join(FONTS_DIR, "Gloock-Regular.ttf")
 
-# Find the right font size so M fills ~62% of the icon width
+# Find the right font size so M fills ~62% of the icon plate width
 target_width_ratio = 0.62
-target_width = SZ * target_width_ratio
+target_width = PLATE_SIZE * target_width_ratio
 
 font_size = int(SZ * 0.75)
 font = ImageFont.truetype(font_path, font_size)
@@ -96,9 +119,18 @@ img = Image.alpha_composite(img, m_layer)
 
 # ── 3. MASK + DOWNSAMPLE ──────────────────────────────────────────────────────
 img_1024 = img.resize((1024, 1024), Image.LANCZOS)
-cr   = int(1024 * 0.2237)
+cr   = int(PLATE_SIZE_1X * 0.2237)
 mask = Image.new('L', (1024, 1024), 0)
-ImageDraw.Draw(mask).rounded_rectangle([0, 0, 1023, 1023], radius=cr, fill=255)
+ImageDraw.Draw(mask).rounded_rectangle(
+    [
+        PLATE_MARGIN_1X,
+        PLATE_MARGIN_1X,
+        PLATE_MARGIN_1X + PLATE_SIZE_1X - 1,
+        PLATE_MARGIN_1X + PLATE_SIZE_1X - 1,
+    ],
+    radius=cr,
+    fill=255,
+)
 img_1024.putalpha(mask)
 
 img_1024.save(OUT, 'PNG')
