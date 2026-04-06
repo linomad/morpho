@@ -14,14 +14,16 @@ public final class CloudTranslationEngine: TranslationEngine {
         source: LanguageSource,
         target: Locale.Language,
         apiKey: String?,
-        modelID: String?
+        modelID: String?,
+        workMode: WorkMode
     ) async throws -> String {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedText.isEmpty else {
             throw TranslationWorkflowError.noTextToTranslate
         }
 
-        if case .fixed(let sourceLanguage) = source,
+        if workMode != .polish,
+           case .fixed(let sourceLanguage) = source,
            sourceLanguage.minimalIdentifier == target.minimalIdentifier {
             return normalizedText
         }
@@ -37,7 +39,8 @@ public final class CloudTranslationEngine: TranslationEngine {
                 source: source,
                 target: target,
                 apiKey: apiKey,
-                modelID: modelID
+                modelID: modelID,
+                workMode: workMode
             )
         } catch let error as TranslationWorkflowError {
             throw error

@@ -20,6 +20,7 @@ public final class UserDefaultsSettingsStore: SettingsStore {
         let launchAtLoginPreferred: Bool?
         let interfaceLanguageCode: String?
         let translationModelID: String?
+        let workMode: String?
     }
 
     private let defaults: UserDefaults
@@ -79,7 +80,8 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             translationAPIKey: persisted.translationAPIKey ?? "",
             launchAtLoginPreferred: persisted.launchAtLoginPreferred ?? AppSettings.defaultValue.launchAtLoginPreferred,
             interfaceLanguageCode: persisted.interfaceLanguageCode ?? AppSettings.defaultValue.interfaceLanguageCode,
-            translationModelID: persisted.translationModelID ?? AppSettings.defaultValue.translationModelID
+            translationModelID: persisted.translationModelID ?? AppSettings.defaultValue.translationModelID,
+            workMode: persisted.workMode.flatMap { WorkMode(rawValue: $0) } ?? .translate
         )
     }
 
@@ -117,7 +119,8 @@ public final class UserDefaultsSettingsStore: SettingsStore {
             translationBackend: nil,
             launchAtLoginPreferred: settings.launchAtLoginPreferred,
             interfaceLanguageCode: settings.interfaceLanguageCode,
-            translationModelID: settings.translationModelID
+            translationModelID: settings.translationModelID,
+            workMode: settings.workMode.rawValue
         )
 
         if let data = try? JSONEncoder().encode(persisted) {

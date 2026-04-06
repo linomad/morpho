@@ -6,6 +6,7 @@ public protocol CloudTranslationProviderClient {
         source: LanguageSource,
         target: Locale.Language,
         apiKey: String,
-        modelID: String?
+        modelID: String?,
+        workMode: WorkMode
     ) async throws -> String
 }

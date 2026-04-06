@@ -175,6 +175,18 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         XCTAssertEqual(loaded.translationModelID, "deepseek-ai/DeepSeek-V3")
     }
 
+    func testSaveAndLoadPreservesWorkMode() {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+        var settings = AppSettings.defaultValue
+        settings.workMode = .polish
+
+        store.save(settings)
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.workMode, .polish)
+    }
+
     func testLoadFallsBackToDefaultForMissingNewSettingsFields() throws {
         let defaults = makeIsolatedDefaults()
         let store = UserDefaultsSettingsStore(defaults: defaults)
@@ -193,6 +205,26 @@ final class UserDefaultsSettingsStoreTests: XCTestCase {
         XCTAssertEqual(loaded.interfaceLanguageCode, AppSettings.defaultValue.interfaceLanguageCode)
         XCTAssertEqual(loaded.translationModelID, AppSettings.defaultValue.translationModelID)
         XCTAssertEqual(loaded.launchAtLoginPreferred, AppSettings.defaultValue.launchAtLoginPreferred)
+        XCTAssertEqual(loaded.workMode, .translate)
+    }
+
+    func testLoadFallsBackToTranslateWhenWorkModeIsUnknown() throws {
+        let defaults = makeIsolatedDefaults()
+        let store = UserDefaultsSettingsStore(defaults: defaults)
+
+        let payload: [String: Any] = [
+            "keyCode": 17,
+            "modifiers": 0,
+            "sourceMode": "auto",
+            "targetLanguageIdentifier": Locale.Language(identifier: "zh-Hans").maximalIdentifier,
+            "workMode": "unknown"
+        ]
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        defaults.set(data, forKey: "morpho.app.settings")
+
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.workMode, .translate)
     }
 
     func testLoadAutoSourceWithoutPairBuildsDefaultBidirectionalPair() throws {

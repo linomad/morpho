@@ -20,4 +20,16 @@ final class InterfaceLocalizationTests: XCTestCase {
 
         XCTAssertEqual(value, "Settings")
     }
+
+    func testMenuModePolishUsesEnglishTranslation() {
+        let value = AppLocalization.string("menu.mode.polish", locale: Locale(identifier: "en"))
+
+        XCTAssertEqual(value, "Polish")
+    }
+
+    func testPolishStatusUsesSimplifiedChineseTranslation() {
+        let value = AppLocalization.string("status.polish_complete", locale: Locale(identifier: "zh-Hans"))
+
+        XCTAssertEqual(value, "润色完成")
+    }
 }

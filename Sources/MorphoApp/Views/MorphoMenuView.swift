@@ -21,6 +21,16 @@ struct MorphoMenuView: View {
             )
             .font(.subheadline)
 
+            Text(
+                AppLocalization.format(
+                    "menu.mode.current",
+                    locale: locale,
+                    localized(currentModeKey)
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
             Text(truncatedStatusMessage)
                 .font(.caption)
                 .foregroundStyle(color(for: model.lastStatus.severity))
@@ -29,17 +39,20 @@ struct MorphoMenuView: View {
 
             Divider()
 
-            Button(localized("menu.action.translate_now")) {
-                model.triggerTranslation()
-            }
+            Button(localized(actionButtonKey), action: model.triggerTranslation)
 
-            Button(localized("menu.action.settings")) {
-                openSettingsWindow()
-            }
+            Button(
+                AppLocalization.format(
+                    "menu.action.switch_mode",
+                    locale: locale,
+                    localized(nextModeKey)
+                ),
+                action: model.toggleWorkMode
+            )
 
-            Button(localized("menu.action.quit")) {
-                NSApplication.shared.terminate(nil)
-            }
+            Button(localized("menu.action.settings"), action: openSettingsWindow)
+
+            Button(localized("menu.action.quit"), action: quitApp)
         }
         .padding(12)
         .frame(width: 280)
@@ -57,11 +70,41 @@ struct MorphoMenuView: View {
         if model.lastStatus.message.hasPrefix("翻译完成") || model.lastStatus.message.hasPrefix("Translation Complete") {
             return localized("status.translation_complete")
         }
+        if model.lastStatus.message.hasPrefix("润色完成") || model.lastStatus.message.hasPrefix("Polish Complete") {
+            return localized("status.polish_complete")
+        }
         let maxLength = 50
         if model.lastStatus.message.count > maxLength {
             return String(model.lastStatus.message.prefix(maxLength)) + "…"
         }
         return model.lastStatus.message
+    }
+
+    private var actionButtonKey: String {
+        switch model.workMode {
+        case .translate:
+            return "menu.action.translate_now"
+        case .polish:
+            return "menu.action.polish_now"
+        }
+    }
+
+    private var currentModeKey: String {
+        switch model.workMode {
+        case .translate:
+            return "menu.mode.translate"
+        case .polish:
+            return "menu.mode.polish"
+        }
+    }
+
+    private var nextModeKey: String {
+        switch model.workMode {
+        case .translate:
+            return "menu.mode.polish"
+        case .polish:
+            return "menu.mode.translate"
+        }
     }
 
     private func color(for severity: StatusSeverity) -> Color {
@@ -100,6 +143,10 @@ struct MorphoMenuView: View {
                 }
             }
         }
+    }
+
+    private func quitApp() {
+        NSApplication.shared.terminate(nil)
     }
 
     private func localized(_ key: String) -> String {

@@ -241,6 +241,16 @@ final class MorphoAppModel: ObservableObject {
         persistAndApplySettings()
     }
 
+    func toggleWorkMode() {
+        switch settings.workMode {
+        case .translate:
+            settings.workMode = .polish
+        case .polish:
+            settings.workMode = .translate
+        }
+        persistSettings()
+    }
+
     var autoDetectEnabled: Bool {
         if case .auto = settings.sourceLanguage {
             return true
@@ -280,6 +290,10 @@ final class MorphoAppModel: ObservableObject {
 
     var translationModelID: String {
         settings.translationModelID
+    }
+
+    var workMode: WorkMode {
+        settings.workMode
     }
 
     func refreshRunHistory(limit: Int = 200) {

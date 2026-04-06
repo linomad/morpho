@@ -20,7 +20,8 @@ public final class SiliconFlowTranslationProviderClient: CloudTranslationProvide
         source: LanguageSource,
         target: Locale.Language,
         apiKey: String,
-        modelID: String?
+        modelID: String?,
+        workMode: WorkMode
     ) async throws -> String {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedText.isEmpty else {
@@ -40,17 +41,23 @@ public final class SiliconFlowTranslationProviderClient: CloudTranslationProvide
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
+        let systemContent: String
+        let userContent: String
+
+        switch workMode {
+        case .translate:
+            systemContent = "You are a translation engine. Return only translated text without explanations."
+            userContent = buildUserPrompt(text: normalizedText, source: source, target: target)
+        case .polish:
+            systemContent = "You are a text proofreading engine. Return only the corrected text without explanations."
+            userContent = buildPolishPrompt(text: normalizedText, source: source)
+        }
+
         let body = SiliconFlowChatCompletionsRequest(
             model: resolvedModel,
             messages: [
-                .init(
-                    role: "system",
-                    content: "You are a translation engine. Return only translated text without explanations."
-                ),
-                .init(
-                    role: "user",
-                    content: buildUserPrompt(text: normalizedText, source: source, target: target)
-                )
+                .init(role: "system", content: systemContent),
+                .init(role: "user", content: userContent)
             ],
             temperature: 0
         )
@@ -83,6 +90,24 @@ public final class SiliconFlowTranslationProviderClient: CloudTranslationProvide
         } catch {
             throw TranslationWorkflowError.translationFailed
         }
+    }
+
+    private func buildPolishPrompt(text: String, source: LanguageSource) -> String {
+        let sourceDescription: String
+        switch source {
+        case .auto:
+            sourceDescription = "auto"
+        case .fixed(let language):
+            sourceDescription = LanguageIdentifierCodec.persistedIdentifier(for: language)
+        }
+
+        return """
+        Proofread and correct the text below. Fix grammar errors, correct typos, and make it sound natural.
+        Do NOT translate to another language. Keep the original language.
+        Source language: \(sourceDescription)
+        Text:
+        \(text)
+        """
     }
 
     private func buildUserPrompt(text: String, source: LanguageSource, target: Locale.Language) -> String {

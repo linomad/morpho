@@ -14,8 +14,21 @@ public protocol TranslationEngine {
         source: LanguageSource,
         target: Locale.Language,
         apiKey: String?,
-        modelID: String?
+        modelID: String?,
+        workMode: WorkMode
     ) async throws -> String
+}
+
+extension TranslationEngine {
+    public func translate(
+        _ text: String,
+        source: LanguageSource,
+        target: Locale.Language,
+        apiKey: String?,
+        modelID: String?
+    ) async throws -> String {
+        try await translate(text, source: source, target: target, apiKey: apiKey, modelID: modelID, workMode: .translate)
+    }
 }
 
 public protocol TranslationEngineFactoryProtocol {

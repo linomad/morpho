@@ -5,9 +5,14 @@
 "menu.action.quit" = "Quit Morpho";
 "menu.action.settings" = "Settings";
 "menu.action.translate_now" = "Translate Now";
+"menu.action.polish_now" = "Polish Now";
+"menu.action.switch_mode" = "Switch to %@";
 "menu.app_name" = "Morpho";
 "menu.hotkey.disabled" = "Disabled";
 "menu.hotkey_summary" = "Hotkey: %@";
+"menu.mode.current" = "Mode: %@";
+"menu.mode.translate" = "Translate";
+"menu.mode.polish" = "Polish";
 
 "settings.about.app_info.title" = "App Info";
 "settings.about.app_name" = "Morpho";
@@ -76,3 +81,4 @@
 "status.launch_at_login.unsupported_system" = "Current macOS version does not support launch-at-login configuration.";
 "status.ready" = "Ready";
 "status.translation_complete" = "Translation Complete";
+"status.polish_complete" = "Polish Complete";

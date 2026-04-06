@@ -54,7 +54,14 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
 
         let settings = settingsStore.load()
         let engine = engineFactory.makeEngine(for: settings.translationProvider)
-        let languageRoute = resolveLanguageRoute(for: payload.text, settings: settings)
+
+        let languageRoute: (source: LanguageSource, target: Locale.Language)
+        switch settings.workMode {
+        case .polish:
+            languageRoute = resolvePolishLanguageRoute(for: payload.text, settings: settings)
+        case .translate:
+            languageRoute = resolveLanguageRoute(for: payload.text, settings: settings)
+        }
 
         let translatedText: String
         do {
@@ -63,7 +70,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
                 source: languageRoute.source,
                 target: languageRoute.target,
                 apiKey: settings.translationAPIKey,
-                modelID: settings.translationModelID
+                modelID: settings.translationModelID,
+                workMode: settings.workMode
             )
         } catch let error as TranslationWorkflowError {
             return fail(error, severity: severity(for: error))
@@ -83,16 +91,25 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
             inputText: payload.text,
             outputText: translatedText,
             route: languageRoute,
-            settings: settings
+            settings: settings,
+            workMode: settings.workMode
         )
 
         let truncatedResult = translatedText.count > 50
             ? String(translatedText.prefix(50)) + "…"
             : translatedText
 
+        let statusMessage: String
+        switch settings.workMode {
+        case .translate:
+            statusMessage = "翻译完成: \(truncatedResult)"
+        case .polish:
+            statusMessage = "润色完成: \(truncatedResult)"
+        }
+
         statusSink.publish(
             StatusEntry(
-                message: "翻译完成: \(truncatedResult)",
+                message: statusMessage,
                 severity: .success
             )
         )
@@ -141,6 +158,16 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         return (settings.sourceLanguage, settings.targetLanguage)
     }
 
+    private func resolvePolishLanguageRoute(
+        for text: String,
+        settings: AppSettings
+    ) -> (source: LanguageSource, target: Locale.Language) {
+        if let detectedLanguage = sourceLanguageDetector.detectLanguage(for: text) {
+            return (.fixed(detectedLanguage), detectedLanguage)
+        }
+        return (.auto, settings.targetLanguage)
+    }
+
     @discardableResult
     private func fail(
         _ error: TranslationWorkflowError,
@@ -169,7 +196,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         inputText: String,
         outputText: String,
         route: (source: LanguageSource, target: Locale.Language),
-        settings: AppSettings
+        settings: AppSettings,
+        workMode: WorkMode
     ) {
         let sourceIdentifier: String
         switch route.source {
@@ -188,7 +216,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
                 sourceLanguageIdentifier: sourceIdentifier,
                 targetLanguageIdentifier: targetIdentifier,
                 translationProvider: settings.translationProvider,
-                translationModelID: settings.translationModelID
+                translationModelID: settings.translationModelID,
+                workMode: workMode
             )
         )
     }

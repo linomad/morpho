@@ -5,9 +5,14 @@
 "menu.action.quit" = "退出 Morpho";
 "menu.action.settings" = "设置";
 "menu.action.translate_now" = "立即翻译";
+"menu.action.polish_now" = "立即润色";
+"menu.action.switch_mode" = "切换到%@";
 "menu.app_name" = "Morpho";
 "menu.hotkey.disabled" = "已关闭";
 "menu.hotkey_summary" = "快捷键: %@";
+"menu.mode.current" = "当前模式：%@";
+"menu.mode.translate" = "翻译";
+"menu.mode.polish" = "润色";
 
 "settings.about.app_info.title" = "应用信息";
 "settings.about.app_name" = "Morpho";
@@ -76,3 +81,4 @@
 "status.launch_at_login.unsupported_system" = "当前系统版本不支持开机启动配置。";
 "status.ready" = "准备就绪";
 "status.translation_complete" = "翻译完成";
+"status.polish_complete" = "润色完成";

@@ -53,6 +53,7 @@ public struct AppSettings: Equatable, Sendable {
     public var launchAtLoginPreferred: Bool
     public var interfaceLanguageCode: String
     public var translationModelID: String
+    public var workMode: WorkMode
 
     public init(
         hotkey: HotkeyShortcut,
@@ -64,7 +65,8 @@ public struct AppSettings: Equatable, Sendable {
         translationAPIKey: String,
         launchAtLoginPreferred: Bool = false,
         interfaceLanguageCode: String = AppSettings.defaultInterfaceLanguageCode,
-        translationModelID: String = AppSettings.defaultTranslationModelID
+        translationModelID: String = AppSettings.defaultTranslationModelID,
+        workMode: WorkMode = .translate
     ) {
         self.hotkey = hotkey
         self.isHotkeyEnabled = isHotkeyEnabled
@@ -76,6 +78,7 @@ public struct AppSettings: Equatable, Sendable {
         self.launchAtLoginPreferred = launchAtLoginPreferred
         self.interfaceLanguageCode = interfaceLanguageCode
         self.translationModelID = translationModelID
+        self.workMode = workMode
     }
 
     public static let defaultValue = AppSettings(
@@ -90,7 +93,8 @@ public struct AppSettings: Equatable, Sendable {
         translationAPIKey: "",
         launchAtLoginPreferred: false,
         interfaceLanguageCode: AppSettings.defaultInterfaceLanguageCode,
-        translationModelID: AppSettings.defaultTranslationModelID
+        translationModelID: AppSettings.defaultTranslationModelID,
+        workMode: .translate
     )
 
     public func withTargetLanguage(_ identifier: String) -> AppSettings {

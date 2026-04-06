@@ -351,6 +351,53 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(runHistoryStore.entries.first?.outputText, "你好")
         XCTAssertEqual(runHistoryStore.entries.first?.translationProvider, .siliconFlow)
         XCTAssertEqual(runHistoryStore.entries.first?.translationModelID, "deepseek-ai/DeepSeek-V3")
+        XCTAssertEqual(runHistoryStore.entries.first?.workMode, .translate)
+    }
+
+    func testExecutePolishModeUsesDetectedLanguageForSourceAndTarget() async {
+        let permission = PermissionStub(isTrusted: true)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: "I has a book.",
+            selectedRange: NSRange(location: 0, length: 13),
+            selectedText: "I has a book.",
+            isSecureField: false
+        )
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy()
+        var settings = AppSettings.defaultValue
+        settings.workMode = .polish
+        settings.targetLanguage = Locale.Language(identifier: "zh-Hans")
+        let settingsStore = SettingsStoreStub(settings: settings)
+        let engine = TranslationEngineStub(translatedText: "I have a book.")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+        let detector = SourceLanguageDetectorStub(detectedLanguage: Locale.Language(identifier: "en"))
+        let runHistoryStore = RunHistoryStoreSpy()
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink,
+            sourceLanguageDetector: detector,
+            runHistoryStore: runHistoryStore
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .success)
+        guard case .fixed(let sourceLanguage) = engine.lastSourceLanguage else {
+            return XCTFail("Expected fixed source language in polish mode.")
+        }
+        XCTAssertEqual(sourceLanguage.minimalIdentifier, "en")
+        XCTAssertEqual(engine.lastTargetLanguage?.minimalIdentifier, "en")
+        XCTAssertEqual(engine.lastWorkMode, .polish)
+        XCTAssertEqual(replacer.lastReplacementText, "I have a book.")
+        XCTAssertEqual(statusSink.last?.message.hasPrefix("润色完成"), true)
+        XCTAssertEqual(runHistoryStore.entries.first?.workMode, .polish)
     }
 }
 
@@ -430,6 +477,7 @@ private final class TranslationEngineStub: TranslationEngine {
     var lastSourceLanguage: LanguageSource?
     var lastTargetLanguage: Locale.Language?
     var lastModelID: String?
+    var lastWorkMode: WorkMode?
 
     init(translatedText: String = "translated") {
         self.translatedText = translatedText
@@ -440,13 +488,15 @@ private final class TranslationEngineStub: TranslationEngine {
         source: LanguageSource,
         target: Locale.Language,
         apiKey: String?,
-        modelID: String?
+        modelID: String?,
+        workMode: WorkMode
     ) async throws -> String {
         lastSourceText = text
         lastSourceLanguage = source
         lastTargetLanguage = target
         lastAPIKey = apiKey
         lastModelID = modelID
+        lastWorkMode = workMode
         return translatedText
     }
 }
