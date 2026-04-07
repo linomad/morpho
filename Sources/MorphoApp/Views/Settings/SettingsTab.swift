@@ -3,8 +3,7 @@ import Foundation
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general
     case hotkey
-    case language
-    case engine
+    case mode
     case history
     case about
 
@@ -20,10 +19,8 @@ enum SettingsTab: String, CaseIterable, Identifiable {
             return "settings.tab.general"
         case .hotkey:
             return "settings.tab.hotkey"
-        case .language:
-            return "settings.tab.translation"
-        case .engine:
-            return "settings.tab.engine"
+        case .mode:
+            return "settings.tab.mode"
         case .history:
             return "settings.tab.history"
         case .about:
@@ -37,10 +34,8 @@ enum SettingsTab: String, CaseIterable, Identifiable {
             return "slider.horizontal.3"
         case .hotkey:
             return "keyboard"
-        case .language:
-            return "globe"
-        case .engine:
-            return "waveform"
+        case .mode:
+            return "arrow.triangle.swap"
         case .history:
             return "clock.arrow.circlepath"
         case .about:

@@ -52,10 +52,8 @@ struct SettingsShellView: View {
             GeneralSettingsPane(model: model)
         case .hotkey:
             HotkeySettingsPane(model: model)
-        case .language:
-            LanguageSettingsPane(model: model)
-        case .engine:
-            EngineSettingsPane(model: model)
+        case .mode:
+            ModeSettingsPane(model: model)
         case .history:
             HistorySettingsPane(model: model)
         case .about:

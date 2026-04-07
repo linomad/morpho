@@ -251,6 +251,11 @@ final class MorphoAppModel: ObservableObject {
         persistSettings()
     }
 
+    func updateWorkMode(_ mode: WorkMode) {
+        settings.workMode = mode
+        persistSettings()
+    }
+
     var autoDetectEnabled: Bool {
         if case .auto = settings.sourceLanguage {
             return true
