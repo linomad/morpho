@@ -6,12 +6,14 @@ Uses Gloock serif for elegant, authoritative brand identity.
 """
 
 import os
+from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 SCALE = 4
 SZ    = 1024 * SCALE
-OUT   = "/Users/zhengyuelin/Things/morpho/assets/morpho-app-icon.png"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+OUT = REPO_ROOT / "assets" / "morpho-app-icon.png"
 
 FONTS_DIR = "/Users/zhengyuelin/.claude/skills/canvas-design/canvas-fonts"
 
@@ -21,6 +23,15 @@ PLATE_SIZE_1X = 824
 PLATE_MARGIN_1X = 100
 PLATE_SCALE = PLATE_SIZE_1X / 1024.0
 PLATE_SIZE = int(SZ * PLATE_SCALE)
+PLATE_CORNER_RADIUS_1X = int(PLATE_SIZE_1X * 0.2237)
+
+# Apple template-aligned shadow strategy:
+# Keep a soft ambient halo + a slightly offset key shadow to match
+# Launchpad/Finder depth perception while staying subtle.
+SHADOW_PASSES = (
+    {"blur": 18, "offset_y": 4, "opacity": 0.18},
+    {"blur": 9, "offset_y": 12, "opacity": 0.10},
+)
 
 FONT_DIR_CANDIDATES = [
     os.environ.get("MORPHO_ICON_FONTS_DIR", ""),
@@ -48,6 +59,26 @@ PX, PY = XX - cx, YY - cy
 def sm(e0, e1, x):
     t = np.clip((x-e0)/(e1-e0+1e-9), 0, 1)
     return t*t*(3-2*t)
+
+def build_plate_shadow(canvas_size, plate_rect, corner_radius, shadow_passes):
+    shadow = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+    x0, y0, x1, y1 = plate_rect
+
+    for spec in shadow_passes:
+        layer_alpha = Image.new("L", (canvas_size, canvas_size), 0)
+        layer_draw = ImageDraw.Draw(layer_alpha)
+        layer_draw.rounded_rectangle(
+            [x0, y0 + spec["offset_y"], x1, y1 + spec["offset_y"]],
+            radius=corner_radius,
+            fill=int(255 * spec["opacity"]),
+        )
+        layer_alpha = layer_alpha.filter(ImageFilter.GaussianBlur(spec["blur"]))
+
+        layer = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+        layer.putalpha(layer_alpha)
+        shadow = Image.alpha_composite(shadow, layer)
+
+    return shadow
 
 # ── 1. BACKGROUND ─────────────────────────────────────────────────────────────
 # Deep cool-charcoal. Very subtle center warmth — like moonlight on dark stone.
@@ -119,21 +150,31 @@ img = Image.alpha_composite(img, m_layer)
 
 # ── 3. MASK + DOWNSAMPLE ──────────────────────────────────────────────────────
 img_1024 = img.resize((1024, 1024), Image.LANCZOS)
-cr   = int(PLATE_SIZE_1X * 0.2237)
 mask = Image.new('L', (1024, 1024), 0)
+plate_rect = (
+    PLATE_MARGIN_1X,
+    PLATE_MARGIN_1X,
+    PLATE_MARGIN_1X + PLATE_SIZE_1X - 1,
+    PLATE_MARGIN_1X + PLATE_SIZE_1X - 1,
+)
 ImageDraw.Draw(mask).rounded_rectangle(
-    [
-        PLATE_MARGIN_1X,
-        PLATE_MARGIN_1X,
-        PLATE_MARGIN_1X + PLATE_SIZE_1X - 1,
-        PLATE_MARGIN_1X + PLATE_SIZE_1X - 1,
-    ],
-    radius=cr,
+    plate_rect,
+    radius=PLATE_CORNER_RADIUS_1X,
     fill=255,
 )
 img_1024.putalpha(mask)
 
+shadow = build_plate_shadow(
+    canvas_size=1024,
+    plate_rect=plate_rect,
+    corner_radius=PLATE_CORNER_RADIUS_1X,
+    shadow_passes=SHADOW_PASSES,
+)
+composite = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+composite = Image.alpha_composite(composite, shadow)
+img_1024 = Image.alpha_composite(composite, img_1024)
+
 img_1024.save(OUT, 'PNG')
 print(f"Saved: {OUT}")
-img_1024.resize((512, 512), Image.LANCZOS).save(OUT.replace('.png', '-512.png'))
+img_1024.resize((512, 512), Image.LANCZOS).save(OUT.with_name(f"{OUT.stem}-512{OUT.suffix}"))
 print("Done.")
