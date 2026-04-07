@@ -62,18 +62,19 @@
 "settings.interface_language.option.system" = "Follow System";
 "settings.interface_language.option.zh_hans" = "Simplified Chinese";
 
-"settings.mode.description" = "Choose what Morpho does when the hotkey is triggered.";
-"settings.mode.language.polish_info" = "In Polish mode, Morpho detects the language automatically and rewrites in the same language. No configuration needed.";
-"settings.mode.language.title" = "Language Settings";
-"settings.mode.polish.description" = "Detect selected text language and polish the text in the same language.";
-"settings.mode.title" = "Work Mode";
-"settings.mode.translate.description" = "Detect source language and translate selected text to the target language.";
+"settings.workflow.description" = "Choose what Morpho does when the hotkey is triggered.";
+"settings.workflow.language.polish_info" = "In Polish mode, Morpho detects the language automatically and rewrites in the same language. No configuration needed.";
+"settings.workflow.language.title" = "Language Settings";
+"settings.workflow.polish.description" = "Detect selected text language and polish the text in the same language.";
+"settings.workflow.title" = "Work Mode";
+"settings.workflow.translate.description" = "Detect source language and translate selected text to the target language.";
 
 "settings.tab.about" = "About";
+"settings.tab.engine" = "Engine";
 "settings.tab.general" = "General";
 "settings.tab.history" = "History";
 "settings.tab.hotkey" = "Hotkey";
-"settings.tab.mode" = "Mode";
+"settings.tab.workflow" = "Workflow";
 
 "settings.translation.auto_detect.hint" = "When enabled: if source language is detected, translate to target language; if target language is detected, translate to source language.";
 "settings.translation.auto_detect.toggle" = "Enable Auto Detection";

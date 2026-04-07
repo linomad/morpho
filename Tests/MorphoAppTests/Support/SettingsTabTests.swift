@@ -3,26 +3,42 @@ import XCTest
 @testable import MorphoApp
 
 final class SettingsTabTests: XCTestCase {
-    func testAllCasesContainModeTabAndDropLegacyLanguageAndEngineTabs() {
+    func testAllCasesContainWorkflowAndEngineTabs() {
         XCTAssertEqual(
             SettingsTab.allCases,
-            [.general, .hotkey, .mode, .history, .about]
+            [.general, .hotkey, .workflow, .engine, .history, .about]
         )
     }
 
-    func testModeTabUsesExpectedIcon() {
-        XCTAssertEqual(SettingsTab.mode.iconName, "arrow.triangle.swap")
+    func testWorkflowTabUsesExpectedIcon() {
+        XCTAssertEqual(SettingsTab.workflow.iconName, "arrow.triangle.swap")
     }
 
-    func testModeTabUsesEnglishTranslation() {
-        let value = SettingsTab.mode.title(locale: Locale(identifier: "en"))
-
-        XCTAssertEqual(value, "Mode")
+    func testEngineTabUsesExpectedIcon() {
+        XCTAssertEqual(SettingsTab.engine.iconName, "waveform")
     }
 
-    func testModeTabUsesSimplifiedChineseTranslation() {
-        let value = SettingsTab.mode.title(locale: Locale(identifier: "zh-Hans"))
+    func testWorkflowTabUsesEnglishTranslation() {
+        let value = SettingsTab.workflow.title(locale: Locale(identifier: "en"))
 
-        XCTAssertEqual(value, "模式")
+        XCTAssertEqual(value, "Workflow")
+    }
+
+    func testWorkflowTabUsesSimplifiedChineseTranslation() {
+        let value = SettingsTab.workflow.title(locale: Locale(identifier: "zh-Hans"))
+
+        XCTAssertEqual(value, "流程")
+    }
+
+    func testEngineTabUsesEnglishTranslation() {
+        let value = SettingsTab.engine.title(locale: Locale(identifier: "en"))
+
+        XCTAssertEqual(value, "Engine")
+    }
+
+    func testEngineTabUsesSimplifiedChineseTranslation() {
+        let value = SettingsTab.engine.title(locale: Locale(identifier: "zh-Hans"))
+
+        XCTAssertEqual(value, "引擎")
     }
 }
