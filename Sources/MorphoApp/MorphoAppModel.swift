@@ -10,6 +10,9 @@ final class MorphoAppModel: ObservableObject {
     private static let animationTimerInterval: TimeInterval = 0.033
     private static let delayBeforeShow: TimeInterval = 0.2
     private static let minimumDisplayDuration: TimeInterval = 0.35
+    private nonisolated static let completionStatusResetDelay: TimeInterval = 60
+    private nonisolated static let translationCompleteStatusPrefixes = ["翻译完成", "Translation Complete"]
+    private nonisolated static let polishCompleteStatusPrefixes = ["润色完成", "Polish Complete"]
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
@@ -35,6 +38,7 @@ final class MorphoAppModel: ObservableObject {
     private var dotPresentationGeneration: UInt64 = 0
     private var dotShownAt: Date?
     private var dotWasShown: Bool = false
+    private var completionStatusResetTask: Task<Void, Never>?
 
     init() {
         let settingsStore = UserDefaultsSettingsStore()
@@ -332,9 +336,52 @@ final class MorphoAppModel: ObservableObject {
             .compactMap { $0 }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] entry in
-                self?.lastStatus = entry
+                self?.handleIncomingStatus(entry)
             }
             .store(in: &cancellables)
+    }
+
+    private func handleIncomingStatus(_ entry: StatusEntry) {
+        lastStatus = entry
+        scheduleCompletionStatusResetIfNeeded(for: entry)
+    }
+
+    private func scheduleCompletionStatusResetIfNeeded(for entry: StatusEntry) {
+        cancelCompletionStatusResetTask()
+        guard Self.shouldAutoResetMenuStatus(message: entry.message) else {
+            return
+        }
+
+        completionStatusResetTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.completionStatusResetDelay))
+            guard !Task.isCancelled else {
+                return
+            }
+            guard let self, self.lastStatus == entry else {
+                return
+            }
+            self.lastStatus = StatusEntry(
+                message: AppLocalization.string("status.ready", locale: self.interfaceLocale),
+                severity: .info
+            )
+        }
+    }
+
+    private func cancelCompletionStatusResetTask() {
+        completionStatusResetTask?.cancel()
+        completionStatusResetTask = nil
+    }
+
+    nonisolated static func isTranslationCompleteStatus(message: String) -> Bool {
+        translationCompleteStatusPrefixes.contains { message.hasPrefix($0) }
+    }
+
+    nonisolated static func isPolishCompleteStatus(message: String) -> Bool {
+        polishCompleteStatusPrefixes.contains { message.hasPrefix($0) }
+    }
+
+    nonisolated static func shouldAutoResetMenuStatus(message: String) -> Bool {
+        isTranslationCompleteStatus(message: message) || isPolishCompleteStatus(message: message)
     }
 
     private func bindHotkey() {

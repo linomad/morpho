@@ -67,10 +67,10 @@ struct MorphoMenuView: View {
     }
 
     private var truncatedStatusMessage: String {
-        if model.lastStatus.message.hasPrefix("翻译完成") || model.lastStatus.message.hasPrefix("Translation Complete") {
+        if MorphoAppModel.isTranslationCompleteStatus(message: model.lastStatus.message) {
             return localized("status.translation_complete")
         }
-        if model.lastStatus.message.hasPrefix("润色完成") || model.lastStatus.message.hasPrefix("Polish Complete") {
+        if MorphoAppModel.isPolishCompleteStatus(message: model.lastStatus.message) {
             return localized("status.polish_complete")
         }
         let maxLength = 50
