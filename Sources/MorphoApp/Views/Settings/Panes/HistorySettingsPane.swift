@@ -44,7 +44,7 @@ struct HistorySettingsPane: View {
         }
         .onAppear {
             visibleLimit = 20
-            model.refreshRunHistory(limit: 500)
+            model.refreshRunHistory(limit: 50)
         }
     }
 
@@ -71,8 +71,8 @@ private struct HistoryEntryRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            historyBlock(label: localized("settings.history.input.label"), value: entry.inputText)
-            historyBlock(label: localized("settings.history.output.label"), value: entry.outputText)
+            historyBlock(label: localized("settings.history.input.label"), value: entry.inputText, lineLimit: 3)
+            historyBlock(label: localized("settings.history.output.label"), value: entry.outputText, lineLimit: 3)
         }
         .padding(10)
         .background(
@@ -86,7 +86,7 @@ private struct HistoryEntryRow: View {
     }
 
     @ViewBuilder
-    private func historyBlock(label: String, value: String) -> some View {
+    private func historyBlock(label: String, value: String, lineLimit: Int? = nil) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(.caption2)
@@ -95,6 +95,8 @@ private struct HistoryEntryRow: View {
                 .font(.body)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(lineLimit)
+                .fixedSize(horizontal: false, vertical: lineLimit == nil)
         }
     }
 
