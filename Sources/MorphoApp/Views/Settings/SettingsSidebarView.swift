@@ -15,16 +15,17 @@ struct SettingsSidebarView: View {
                         Image(systemName: tab.iconName)
                             .font(.system(size: 13, weight: .semibold))
                             .frame(width: 16)
+                            .foregroundStyle(tab == selectedTab ? Color.accentColor : .secondary)
                         Text(tab.title(locale: locale))
                             .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.primary)
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(tab == selectedTab ? .white : .primary)
                     .padding(.horizontal, 10)
                     .frame(height: 36)
                     .background(
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(tab == selectedTab ? Color.accentColor : Color.clear)
+                            .fill(tab == selectedTab ? Color.white.opacity(0.12) : Color.clear)
                     )
                     .contentShape(Rectangle())
                 }

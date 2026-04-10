@@ -13,10 +13,7 @@ struct WorkflowSettingsPane: View {
     }
 
     private var modeCard: some View {
-        SettingsCard(
-            title: localized("settings.workflow.title"),
-            description: localized("settings.workflow.description")
-        ) {
+        SettingsCard(title: localized("settings.workflow.title")) {
             Picker(
                 localized("settings.workflow.title"),
                 selection: Binding(
