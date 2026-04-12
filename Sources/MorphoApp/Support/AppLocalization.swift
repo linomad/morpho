@@ -34,6 +34,16 @@ enum AppLocalization {
         )
     }
 
+    static func format(
+        _ key: String,
+        locale: Locale,
+        arguments: [String]
+    ) -> String {
+        let formatString = string(key, locale: locale)
+        let cVarArgs: [CVarArg] = arguments.map { $0 as NSString }
+        return String(format: formatString, locale: locale, arguments: cVarArgs)
+    }
+
     private static func preferredLocalization(for locale: Locale) -> String {
         let availableLocalizations = Bundle.module.localizations
         let preferred = Bundle.preferredLocalizations(

@@ -67,17 +67,19 @@ struct MorphoMenuView: View {
     }
 
     private var truncatedStatusMessage: String {
-        if MorphoAppModel.isTranslationCompleteStatus(message: model.lastStatus.message) {
+        switch model.lastStatus.code {
+        case .translationCompleted:
             return localized("status.translation_complete")
-        }
-        if MorphoAppModel.isPolishCompleteStatus(message: model.lastStatus.message) {
+        case .polishCompleted:
             return localized("status.polish_complete")
+        default:
+            let maxLength = 50
+            let message = StatusMessageLocalizer.localizedMessage(for: model.lastStatus, locale: locale)
+            if message.count > maxLength {
+                return String(message.prefix(maxLength)) + "…"
+            }
+            return message
         }
-        let maxLength = 50
-        if model.lastStatus.message.count > maxLength {
-            return String(model.lastStatus.message.prefix(maxLength)) + "…"
-        }
-        return model.lastStatus.message
     }
 
     private var actionButtonKey: String {

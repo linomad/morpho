@@ -66,13 +66,35 @@ private struct HistoryEntryRow: View {
 
                 Spacer()
 
-                Text("\(entry.sourceLanguageIdentifier) -> \(entry.targetLanguageIdentifier)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if entry.result == .success {
+                    Text("\(entry.sourceLanguageIdentifier) -> \(entry.targetLanguageIdentifier)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(localized("settings.history.result.blocked"))
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
             }
 
-            historyBlock(label: localized("settings.history.input.label"), value: entry.inputText, lineLimit: 3)
-            historyBlock(label: localized("settings.history.output.label"), value: entry.outputText, lineLimit: 3)
+            if entry.result == .success {
+                historyBlock(label: localized("settings.history.input.label"), value: entry.inputText, lineLimit: 3)
+                historyBlock(label: localized("settings.history.output.label"), value: entry.outputText, lineLimit: 3)
+            } else {
+                historyBlock(label: localized("settings.history.input.label"), value: entry.inputPreview, lineLimit: 3)
+
+                if let blockReason = entry.blockReason {
+                    HStack(spacing: 4) {
+                        Text(localized("settings.history.reason.label"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(blockReasonLocalizedKey(blockReason))
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                        Spacer()
+                    }
+                }
+            }
         }
         .padding(10)
         .background(
@@ -102,5 +124,12 @@ private struct HistoryEntryRow: View {
 
     private func localized(_ key: String) -> String {
         AppLocalization.string(key, locale: locale)
+    }
+
+    private func blockReasonLocalizedKey(_ reason: RunHistoryBlockReason) -> String {
+        switch reason {
+        case .inputTextTooLong:
+            return localized("settings.history.reason.input_text_too_long")
+        }
     }
 }

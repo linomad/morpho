@@ -396,8 +396,88 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(engine.lastTargetLanguage?.minimalIdentifier, "en")
         XCTAssertEqual(engine.lastWorkMode, .polish)
         XCTAssertEqual(replacer.lastReplacementText, "I have a book.")
-        XCTAssertEqual(statusSink.last?.message.hasPrefix("润色完成"), true)
+        XCTAssertEqual(statusSink.last?.code, .polishCompleted)
         XCTAssertEqual(runHistoryStore.entries.first?.workMode, .polish)
+    }
+
+    func testExecuteAllowsInputAtLengthLimit() async {
+        let permission = PermissionStub(isTrusted: true)
+        let text = String(repeating: "a", count: 5_000)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: text,
+            selectedRange: NSRange(location: 0, length: text.count),
+            selectedText: text,
+            isSecureField: false
+        )
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy()
+        let settingsStore = SettingsStoreStub()
+        let engine = TranslationEngineStub(translatedText: "translated")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .success)
+        XCTAssertEqual(engine.lastSourceText?.count, 5_000)
+        XCTAssertEqual(replacer.lastReplacementText, "translated")
+    }
+
+    func testExecuteBlocksInputOverLengthLimitWithoutEngineOrReplacement() async {
+        let permission = PermissionStub(isTrusted: true)
+        let text = String(repeating: "a", count: 5_001)
+        let context = TextContext(
+            appBundleId: "com.apple.TextEdit",
+            fullText: text,
+            selectedRange: NSRange(location: 0, length: text.count),
+            selectedText: text,
+            isSecureField: false
+        )
+        let contextProvider = ContextProviderStub(context: context)
+        let replacer = TextReplacerSpy()
+        let settingsStore = SettingsStoreStub()
+        let engine = TranslationEngineStub(translatedText: "translated")
+        let engineFactory = EngineFactoryStub(engine: engine)
+        let statusSink = StatusSinkSpy()
+        let runHistoryStore = RunHistoryStoreSpy()
+
+        let useCase = HandleHotkeyTranslationUseCase(
+            permissionChecker: permission,
+            contextProvider: contextProvider,
+            textReplacer: replacer,
+            settingsStore: settingsStore,
+            engineFactory: engineFactory,
+            statusSink: statusSink,
+            runHistoryStore: runHistoryStore
+        )
+
+        let result = await useCase.execute()
+
+        XCTAssertEqual(result, .failure(.inputTextTooLong(actualCount: 5_001, maxCount: 5_000)))
+        XCTAssertNil(engine.lastSourceText)
+        XCTAssertNil(replacer.lastReplacementText)
+
+        XCTAssertEqual(statusSink.last?.code, .workflowBlocked)
+        XCTAssertEqual(statusSink.last?.severity, .warning)
+        XCTAssertEqual(statusSink.last?.messageKey, "error.input_text_too_long")
+        XCTAssertEqual(statusSink.last?.messageArguments, ["5001", "5000"])
+
+        XCTAssertEqual(runHistoryStore.entries.count, 1)
+        XCTAssertEqual(runHistoryStore.entries.first?.result, .blocked)
+        XCTAssertEqual(runHistoryStore.entries.first?.blockReason, .inputTextTooLong)
+        XCTAssertLessThanOrEqual(runHistoryStore.entries.first?.inputText.count ?? .max, 200)
+        XCTAssertNotEqual(runHistoryStore.entries.first?.sourceLanguageIdentifier, "-")
+        XCTAssertNotEqual(runHistoryStore.entries.first?.targetLanguageIdentifier, "-")
     }
 }
 

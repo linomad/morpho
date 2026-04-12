@@ -2,45 +2,52 @@ import XCTest
 @testable import MorphoKit
 
 final class TranslationErrorPresenterAdditionalTests: XCTestCase {
-    func testUnableToIdentifyMessage() {
-        let message = TranslationErrorPresenter.message(for: .unableToIdentifyLanguage)
+    func testUnableToIdentifyDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .unableToIdentifyLanguage)
 
-        XCTAssertEqual(message, "无法识别源语言，请在设置中固定源语言后重试。")
+        XCTAssertEqual(descriptor.key, "error.unable_to_identify_language")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testUnsupportedPairingMessage() {
-        let message = TranslationErrorPresenter.message(for: .unsupportedLanguagePairing)
+    func testUnsupportedPairingDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .unsupportedLanguagePairing)
 
-        XCTAssertEqual(message, "当前源语言与目标语言组合暂不支持。")
+        XCTAssertEqual(descriptor.key, "error.unsupported_language_pair")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testCloudCredentialMissingMessage() {
-        let message = TranslationErrorPresenter.message(for: .cloudCredentialMissing)
+    func testCloudCredentialMissingDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .cloudCredentialMissing)
 
-        XCTAssertEqual(message, "请先在设置中填写 API Key。")
+        XCTAssertEqual(descriptor.key, "error.cloud.credential_missing")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testCloudAuthenticationFailedMessage() {
-        let message = TranslationErrorPresenter.message(for: .cloudAuthenticationFailed)
+    func testCloudAuthenticationFailedDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .cloudAuthenticationFailed)
 
-        XCTAssertEqual(message, "API Key 校验失败，请检查后重试。")
+        XCTAssertEqual(descriptor.key, "error.cloud.auth_failed")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testCloudRateLimitedMessage() {
-        let message = TranslationErrorPresenter.message(for: .cloudRateLimited)
+    func testCloudRateLimitedDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .cloudRateLimited)
 
-        XCTAssertEqual(message, "请求过于频繁，请稍后重试。")
+        XCTAssertEqual(descriptor.key, "error.cloud.rate_limited")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testCloudServiceUnavailableMessage() {
-        let message = TranslationErrorPresenter.message(for: .cloudServiceUnavailable)
+    func testCloudServiceUnavailableDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .cloudServiceUnavailable)
 
-        XCTAssertEqual(message, "翻译服务暂时不可用，请稍后重试。")
+        XCTAssertEqual(descriptor.key, "error.cloud.service_unavailable")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testSelectionRequiredMessage() {
-        let message = TranslationErrorPresenter.message(for: .selectionRequiredForCurrentControl)
+    func testSelectionRequiredDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .selectionRequiredForCurrentControl)
 
-        XCTAssertEqual(message, "当前控件请先选中文本后翻译。")
+        XCTAssertEqual(descriptor.key, "error.selection_required")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 }

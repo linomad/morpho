@@ -2,21 +2,31 @@ import XCTest
 @testable import MorphoKit
 
 final class TranslationErrorPresenterTests: XCTestCase {
-    func testAccessibilityPermissionMessage() {
-        let message = TranslationErrorPresenter.message(for: .accessibilityPermissionDenied)
+    func testAccessibilityPermissionDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .accessibilityPermissionDenied)
 
-        XCTAssertEqual(message, "需要辅助功能权限，已为你打开系统设置。")
+        XCTAssertEqual(descriptor.key, "error.accessibility_permission_denied")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testUnsupportedInputMessage() {
-        let message = TranslationErrorPresenter.message(for: .unsupportedInputControl)
+    func testUnsupportedInputDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .unsupportedInputControl)
 
-        XCTAssertEqual(message, "当前输入控件不支持直接翻译。")
+        XCTAssertEqual(descriptor.key, "error.unsupported_input_control")
+        XCTAssertTrue(descriptor.args.isEmpty)
     }
 
-    func testNoTextMessage() {
-        let message = TranslationErrorPresenter.message(for: .noTextToTranslate)
+    func testNoTextDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .noTextToTranslate)
 
-        XCTAssertEqual(message, "没有可翻译的文本。")
+        XCTAssertEqual(descriptor.key, "error.no_text_to_translate")
+        XCTAssertTrue(descriptor.args.isEmpty)
+    }
+
+    func testInputTextTooLongDescriptor() {
+        let descriptor = TranslationErrorPresenter.descriptor(for: .inputTextTooLong(actualCount: 10000, maxCount: 5000))
+
+        XCTAssertEqual(descriptor.key, "error.input_text_too_long")
+        XCTAssertEqual(descriptor.args, ["10000", "5000"])
     }
 }

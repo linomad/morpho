@@ -16,4 +16,5 @@ public enum TranslationWorkflowError: Error, Equatable, Sendable {
     case cloudAuthenticationFailed
     case cloudRateLimited
     case cloudServiceUnavailable
+    case inputTextTooLong(actualCount: Int, maxCount: Int)
 }

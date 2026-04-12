@@ -3,8 +3,12 @@ import UserNotifications
 
 public final class UserNotificationStatusReporter: StatusReporting {
     private let isEnabled: Bool
+    private let messageResolver: (StatusEntry) -> String
 
-    public init() {
+    public init(
+        messageResolver: @escaping (StatusEntry) -> String = { $0.messageKey }
+    ) {
+        self.messageResolver = messageResolver
         isEnabled = Bundle.main.bundleIdentifier != nil
         guard isEnabled else {
             return
@@ -22,7 +26,7 @@ public final class UserNotificationStatusReporter: StatusReporting {
 
         let content = UNMutableNotificationContent()
         content.title = "Morpho"
-        content.body = entry.message
+        content.body = resolvedMessage(for: entry)
 
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
@@ -31,5 +35,9 @@ public final class UserNotificationStatusReporter: StatusReporting {
         )
 
         UNUserNotificationCenter.current().add(request)
+    }
+
+    func resolvedMessage(for entry: StatusEntry) -> String {
+        messageResolver(entry)
     }
 }

@@ -1,38 +1,53 @@
 import Foundation
 
+public struct TranslationErrorDescriptor: Sendable, Equatable {
+    public let key: String
+    public let args: [String]
+
+    public init(key: String, args: [String] = []) {
+        self.key = key
+        self.args = args
+    }
+}
+
 public enum TranslationErrorPresenter {
-    public static func message(for error: TranslationWorkflowError) -> String {
+    public static func descriptor(for error: TranslationWorkflowError) -> TranslationErrorDescriptor {
         switch error {
         case .accessibilityPermissionDenied:
-            return "需要辅助功能权限，已为你打开系统设置。"
+            return TranslationErrorDescriptor(key: "error.accessibility_permission_denied")
         case .focusedInputUnavailable:
-            return "没有找到可编辑的输入框。"
+            return TranslationErrorDescriptor(key: "error.focused_input_unavailable")
         case .secureInputUnsupported:
-            return "安全输入框不支持翻译。"
+            return TranslationErrorDescriptor(key: "error.secure_input_unsupported")
         case .unsupportedInputControl:
-            return "当前输入控件不支持直接翻译。"
+            return TranslationErrorDescriptor(key: "error.unsupported_input_control")
         case .selectionRequiredForCurrentControl:
-            return "当前控件请先选中文本后翻译。"
+            return TranslationErrorDescriptor(key: "error.selection_required")
         case .unableToIdentifyLanguage:
-            return "无法识别源语言，请在设置中固定源语言后重试。"
+            return TranslationErrorDescriptor(key: "error.unable_to_identify_language")
         case .unsupportedLanguagePairing:
-            return "当前源语言与目标语言组合暂不支持。"
+            return TranslationErrorDescriptor(key: "error.unsupported_language_pair")
         case .translationInterrupted:
-            return "翻译过程被中断，请重试。"
+            return TranslationErrorDescriptor(key: "error.translation_interrupted")
         case .noTextToTranslate:
-            return "没有可翻译的文本。"
+            return TranslationErrorDescriptor(key: "error.no_text_to_translate")
         case .replacementFailed:
-            return "翻译完成，但写回输入框失败。"
+            return TranslationErrorDescriptor(key: "error.replacement_failed")
         case .translationFailed:
-            return "翻译失败，请稍后重试。"
+            return TranslationErrorDescriptor(key: "error.translation_failed")
         case .cloudCredentialMissing:
-            return "请先在设置中填写 API Key。"
+            return TranslationErrorDescriptor(key: "error.cloud.credential_missing")
         case .cloudAuthenticationFailed:
-            return "API Key 校验失败，请检查后重试。"
+            return TranslationErrorDescriptor(key: "error.cloud.auth_failed")
         case .cloudRateLimited:
-            return "请求过于频繁，请稍后重试。"
+            return TranslationErrorDescriptor(key: "error.cloud.rate_limited")
         case .cloudServiceUnavailable:
-            return "翻译服务暂时不可用，请稍后重试。"
+            return TranslationErrorDescriptor(key: "error.cloud.service_unavailable")
+        case .inputTextTooLong(let actual, let limit):
+            return TranslationErrorDescriptor(
+                key: "error.input_text_too_long",
+                args: [String(actual), String(limit)]
+            )
         }
     }
 }
