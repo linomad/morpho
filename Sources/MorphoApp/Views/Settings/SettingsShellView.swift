@@ -8,8 +8,7 @@ struct SettingsShellView: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
+            Color(nsColor: .windowBackgroundColor)
 
             LinearGradient(
                 colors: [
@@ -19,12 +18,11 @@ struct SettingsShellView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
-            HStack(alignment: .top, spacing: 10) {
+            HStack(spacing: 0) {
                 SettingsSidebarView(selectedTab: $selectedTab)
-                    .frame(width: 180)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                    .frame(width: 190)
+                    .frame(maxHeight: .infinity)
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text(selectedTab.title(locale: locale))
@@ -38,11 +36,11 @@ struct SettingsShellView: View {
                     }
                     .scrollIndicators(.automatic)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding(10)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     @ViewBuilder

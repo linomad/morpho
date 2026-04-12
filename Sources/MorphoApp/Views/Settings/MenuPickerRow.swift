@@ -10,6 +10,7 @@ struct MenuPickerRow<Content: View>: View {
                 .foregroundStyle(.secondary)
             Spacer(minLength: 10)
             content()
+                .fixedSize()
         }
     }
 }
