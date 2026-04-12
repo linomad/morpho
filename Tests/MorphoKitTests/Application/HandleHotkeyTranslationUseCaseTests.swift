@@ -396,7 +396,7 @@ final class HandleHotkeyTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(engine.lastTargetLanguage?.minimalIdentifier, "en")
         XCTAssertEqual(engine.lastWorkMode, .polish)
         XCTAssertEqual(replacer.lastReplacementText, "I have a book.")
-        XCTAssertEqual(statusSink.last?.message.hasPrefix("润色完成"), true)
+        XCTAssertEqual(statusSink.last?.code, .polishCompleted)
         XCTAssertEqual(runHistoryStore.entries.first?.workMode, .polish)
     }
 }

@@ -11,8 +11,6 @@ final class MorphoAppModel: ObservableObject {
     private static let delayBeforeShow: TimeInterval = 0.2
     private static let minimumDisplayDuration: TimeInterval = 0.35
     private nonisolated static let completionStatusResetDelay: TimeInterval = 60
-    private nonisolated static let translationCompleteStatusPrefixes = ["翻译完成", "Translation Complete"]
-    private nonisolated static let polishCompleteStatusPrefixes = ["润色完成", "Polish Complete"]
 
     @Published private(set) var settings: AppSettings
     @Published private(set) var apiKey: String
@@ -67,10 +65,8 @@ final class MorphoAppModel: ObservableObject {
         self.statusReporter = statusReporter
         self.caretLoadingOverlay = CaretLoadingOverlay()
         self.lastStatus = StatusEntry(
-            message: AppLocalization.string(
-                "status.ready",
-                locale: InterfaceLanguageOptions.locale(for: initialSettings.interfaceLanguageCode)
-            ),
+            code: .ready,
+            messageKey: "status.ready",
             severity: .info
         )
         self.menuBarIconStateMachine = menuBarIconStateMachine
@@ -210,11 +206,8 @@ final class MorphoAppModel: ObservableObject {
             persistSettings()
             statusReporter.publish(
                 StatusEntry(
-                    message: launchAtLoginErrorMessage
-                        ?? AppLocalization.string(
-                            "settings.general.launch_at_login.error_generic",
-                            locale: interfaceLocale
-                        ),
+                    code: .launchAtLoginUnsupportedSystem,
+                    messageKey: "settings.general.launch_at_login.error_generic",
                     severity: .error
                 )
             )
@@ -348,7 +341,7 @@ final class MorphoAppModel: ObservableObject {
 
     private func scheduleCompletionStatusResetIfNeeded(for entry: StatusEntry) {
         cancelCompletionStatusResetTask()
-        guard Self.shouldAutoResetMenuStatus(message: entry.message) else {
+        guard entry.code == .translationCompleted || entry.code == .polishCompleted else {
             return
         }
 
@@ -361,7 +354,8 @@ final class MorphoAppModel: ObservableObject {
                 return
             }
             self.lastStatus = StatusEntry(
-                message: AppLocalization.string("status.ready", locale: self.interfaceLocale),
+                code: .ready,
+                messageKey: "status.ready",
                 severity: .info
             )
         }
@@ -372,17 +366,6 @@ final class MorphoAppModel: ObservableObject {
         completionStatusResetTask = nil
     }
 
-    nonisolated static func isTranslationCompleteStatus(message: String) -> Bool {
-        translationCompleteStatusPrefixes.contains { message.hasPrefix($0) }
-    }
-
-    nonisolated static func isPolishCompleteStatus(message: String) -> Bool {
-        polishCompleteStatusPrefixes.contains { message.hasPrefix($0) }
-    }
-
-    nonisolated static func shouldAutoResetMenuStatus(message: String) -> Bool {
-        isTranslationCompleteStatus(message: message) || isPolishCompleteStatus(message: message)
-    }
 
     private func bindHotkey() {
         hotkeyService?.onHotkeyPressed = { [weak self] in
@@ -410,10 +393,8 @@ final class MorphoAppModel: ObservableObject {
         guard let hotkeyService else {
             statusReporter.publish(
                 StatusEntry(
-                    message: AppLocalization.string(
-                        "status.hotkey.init_failed",
-                        locale: interfaceLocale
-                    ),
+                    code: .hotkeyInitFailed,
+                    messageKey: "status.hotkey.init_failed",
                     severity: .error
                 )
             )
@@ -425,10 +406,8 @@ final class MorphoAppModel: ObservableObject {
         } catch {
             statusReporter.publish(
                 StatusEntry(
-                    message: AppLocalization.string(
-                        "status.hotkey.register_failed",
-                        locale: interfaceLocale
-                    ),
+                    code: .hotkeyRegisterFailed,
+                    messageKey: "status.hotkey.register_failed",
                     severity: .error
                 )
             )

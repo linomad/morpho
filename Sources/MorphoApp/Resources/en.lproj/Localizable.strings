@@ -89,3 +89,25 @@
 "status.ready" = "Ready";
 "status.translation_complete" = "Translation Complete";
 "status.polish_complete" = "Polish Complete";
+
+"error.accessibility_permission_denied" = "Accessibility permission required. System settings opened.";
+"error.focused_input_unavailable" = "No editable input field found.";
+"error.secure_input_unsupported" = "Secure input fields are not supported.";
+"error.unsupported_input_control" = "Current input control does not support translation.";
+"error.selection_required" = "Please select text before translating in this control.";
+"error.unable_to_identify_language" = "Unable to identify source language. Please set a fixed source language in settings.";
+"error.unsupported_language_pair" = "This language pair is not supported.";
+"error.translation_interrupted" = "Translation interrupted. Please try again.";
+"error.no_text_to_translate" = "No text to translate.";
+"error.replacement_failed" = "Translation completed but failed to write back to input field.";
+"error.translation_failed" = "Translation failed. Please try again later.";
+"error.cloud.credential_missing" = "Please enter API Key in settings first.";
+"error.cloud.auth_failed" = "API Key validation failed. Please check and try again.";
+"error.cloud.rate_limited" = "Too many requests. Please try again later.";
+"error.cloud.service_unavailable" = "Translation service temporarily unavailable. Please try again later.";
+"error.input_text_too_long" = "Input text is too long (%@/%@).";
+"status.translation_complete_with_preview" = "Translation complete: %@";
+"status.polish_complete_with_preview" = "Polish complete: %@";
+"settings.history.result.blocked" = "Blocked";
+"settings.history.reason.label" = "Reason";
+"settings.history.reason.input_text_too_long" = "Input exceeds length limit";

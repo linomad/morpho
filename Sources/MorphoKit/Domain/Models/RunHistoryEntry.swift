@@ -1,5 +1,14 @@
 import Foundation
 
+public enum RunHistoryResult: String, Codable, Sendable {
+    case success
+    case blocked
+}
+
+public enum RunHistoryBlockReason: String, Codable, Sendable {
+    case inputTextTooLong
+}
+
 public struct RunHistoryEntry: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
     public let createdAt: Date
@@ -10,6 +19,9 @@ public struct RunHistoryEntry: Codable, Equatable, Identifiable, Sendable {
     public let translationProvider: TranslationProvider
     public let translationModelID: String
     public let workMode: WorkMode
+    public let result: RunHistoryResult
+    public let blockReason: RunHistoryBlockReason?
+    public let inputPreview: String
 
     public init(
         id: UUID = UUID(),
@@ -20,7 +32,10 @@ public struct RunHistoryEntry: Codable, Equatable, Identifiable, Sendable {
         targetLanguageIdentifier: String,
         translationProvider: TranslationProvider,
         translationModelID: String,
-        workMode: WorkMode = .translate
+        workMode: WorkMode = .translate,
+        result: RunHistoryResult = .success,
+        blockReason: RunHistoryBlockReason? = nil,
+        inputPreview: String? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -31,6 +46,9 @@ public struct RunHistoryEntry: Codable, Equatable, Identifiable, Sendable {
         self.translationProvider = translationProvider
         self.translationModelID = translationModelID
         self.workMode = workMode
+        self.result = result
+        self.blockReason = blockReason
+        self.inputPreview = inputPreview ?? Self.makeInputPreview(from: inputText)
     }
 
     public init(from decoder: Decoder) throws {
@@ -44,5 +62,16 @@ public struct RunHistoryEntry: Codable, Equatable, Identifiable, Sendable {
         translationProvider = try container.decode(TranslationProvider.self, forKey: .translationProvider)
         translationModelID = try container.decode(String.self, forKey: .translationModelID)
         workMode = try container.decodeIfPresent(WorkMode.self, forKey: .workMode) ?? .translate
+        result = try container.decodeIfPresent(RunHistoryResult.self, forKey: .result) ?? .success
+        blockReason = try container.decodeIfPresent(RunHistoryBlockReason.self, forKey: .blockReason)
+        inputPreview = try container.decodeIfPresent(String.self, forKey: .inputPreview)
+            ?? Self.makeInputPreview(from: inputText)
+    }
+
+    private static func makeInputPreview(from text: String, maxLength: Int = 200) -> String {
+        if text.count <= maxLength {
+            return text
+        }
+        return String(text.prefix(maxLength)) + "…"
     }
 }

@@ -22,7 +22,8 @@ public final class UserNotificationStatusReporter: StatusReporting {
 
         let content = UNMutableNotificationContent()
         content.title = "Morpho"
-        content.body = entry.message
+        // 在通知中暂时使用语义键（App层应当提供本地化后的通知模块）
+        content.body = entry.messageKey
 
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,

@@ -9,6 +9,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
     private let statusSink: StatusReporting
     private let sourceLanguageDetector: any SourceLanguageDetecting
     private let runHistoryStore: RunHistoryStore
+    private let lengthPolicy: InputTextLengthPolicy
 
     public init(
         permissionChecker: AccessibilityPermissionChecking,
@@ -18,7 +19,8 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         engineFactory: TranslationEngineFactoryProtocol,
         statusSink: StatusReporting,
         sourceLanguageDetector: any SourceLanguageDetecting = NoopSourceLanguageDetector(),
-        runHistoryStore: RunHistoryStore = NoopRunHistoryStore()
+        runHistoryStore: RunHistoryStore = NoopRunHistoryStore(),
+        lengthPolicy: InputTextLengthPolicy = InputTextLengthPolicy()
     ) {
         self.permissionChecker = permissionChecker
         self.contextProvider = contextProvider
@@ -28,6 +30,7 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         self.statusSink = statusSink
         self.sourceLanguageDetector = sourceLanguageDetector
         self.runHistoryStore = runHistoryStore
+        self.lengthPolicy = lengthPolicy
     }
 
     public func execute() async -> TranslationExecutionResult {
@@ -50,6 +53,27 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
 
         guard let payload = selectionPayload(from: context) else {
             return fail(.noTextToTranslate, severity: .warning)
+        }
+
+        // 输入长度限制校验
+        switch lengthPolicy.validate(payload.text) {
+        case .tooLong(let actual, let limit):
+            appendBlockedRunHistory(
+                inputText: payload.text,
+                reason: .inputTextTooLong,
+                settings: settingsStore.load()
+            )
+            statusSink.publish(
+                StatusEntry(
+                    code: .workflowBlocked,
+                    messageKey: "error.input_text_too_long",
+                    messageArguments: [String(actual), String(limit)],
+                    severity: .warning
+                )
+            )
+            return .failure(.inputTextTooLong(actualCount: actual, maxCount: limit))
+        case .withinLimit:
+            break
         }
 
         let settings = settingsStore.load()
@@ -99,17 +123,22 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
             ? String(translatedText.prefix(50)) + "…"
             : translatedText
 
-        let statusMessage: String
+        let statusCode: StatusCode
+        let statusKey: String
         switch settings.workMode {
         case .translate:
-            statusMessage = "翻译完成: \(truncatedResult)"
+            statusCode = .translationCompleted
+            statusKey = "status.translation_complete_with_preview"
         case .polish:
-            statusMessage = "润色完成: \(truncatedResult)"
+            statusCode = .polishCompleted
+            statusKey = "status.polish_complete_with_preview"
         }
 
         statusSink.publish(
             StatusEntry(
-                message: statusMessage,
+                code: statusCode,
+                messageKey: statusKey,
+                messageArguments: [truncatedResult],
                 severity: .success
             )
         )
@@ -173,9 +202,12 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         _ error: TranslationWorkflowError,
         severity: StatusSeverity
     ) -> TranslationExecutionResult {
+        let descriptor = TranslationErrorPresenter.descriptor(for: error)
         statusSink.publish(
             StatusEntry(
-                message: TranslationErrorPresenter.message(for: error),
+                code: .workflowFailed,
+                messageKey: descriptor.key,
+                messageArguments: descriptor.args,
                 severity: severity
             )
         )
@@ -217,7 +249,28 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
                 targetLanguageIdentifier: targetIdentifier,
                 translationProvider: settings.translationProvider,
                 translationModelID: settings.translationModelID,
-                workMode: workMode
+                workMode: workMode,
+                result: .success
+            )
+        )
+    }
+
+    private func appendBlockedRunHistory(
+        inputText: String,
+        reason: RunHistoryBlockReason,
+        settings: AppSettings
+    ) {
+        runHistoryStore.append(
+            RunHistoryEntry(
+                inputText: inputText,
+                outputText: "",
+                sourceLanguageIdentifier: "-",
+                targetLanguageIdentifier: "-",
+                translationProvider: settings.translationProvider,
+                translationModelID: settings.translationModelID,
+                workMode: settings.workMode,
+                result: .blocked,
+                blockReason: reason
             )
         )
     }

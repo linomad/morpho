@@ -1,5 +1,13 @@
 import Foundation
 
+private extension NSString {
+    func applyingArgumentArray(_ arguments: [String]) -> String? {
+        let args = arguments as [NSString]
+        let result = String(format: self as String, args)
+        return result
+    }
+}
+
 enum AppLocalization {
     private static let tableName = "Localizable"
     private static let fallbackLocalization = "en"
@@ -32,6 +40,18 @@ enum AppLocalization {
             locale: locale,
             arguments: arguments
         )
+    }
+
+    static func format(
+        _ key: String,
+        locale: Locale,
+        arguments: [String]
+    ) -> String {
+        let formatString = string(key, locale: locale)
+        // Use NSString formatting for array of arguments
+        let nsFormat = formatString as NSString
+        let result = nsFormat.applyingArgumentArray(arguments)
+        return result ?? formatString
     }
 
     private static func preferredLocalization(for locale: Locale) -> String {
