@@ -53,8 +53,12 @@ final class MorphoAppModel: ObservableObject {
         initialSettings.launchAtLoginPreferred = LaunchAtLoginController.isEnabled()
         settingsStore.save(initialSettings)
         let statusCenter = StatusCenter()
+        let notificationReporter = UserNotificationStatusReporter { entry in
+            let locale = InterfaceLanguageOptions.locale(for: settingsStore.load().interfaceLanguageCode)
+            return StatusMessageLocalizer.localizedMessage(for: entry, locale: locale)
+        }
         let statusReporter = CompositeStatusReporter(
-            reporters: [statusCenter, UserNotificationStatusReporter()]
+            reporters: [statusCenter, notificationReporter]
         )
 
         self.settingsStore = settingsStore

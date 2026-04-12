@@ -260,17 +260,22 @@ public final class HandleHotkeyTranslationUseCase: @unchecked Sendable {
         reason: RunHistoryBlockReason,
         settings: AppSettings
     ) {
+        let inputPreview = inputText.count > 200
+            ? String(inputText.prefix(200)) + "…"
+            : inputText
+
         runHistoryStore.append(
             RunHistoryEntry(
-                inputText: inputText,
+                inputText: "",
                 outputText: "",
-                sourceLanguageIdentifier: "-",
-                targetLanguageIdentifier: "-",
+                sourceLanguageIdentifier: "",
+                targetLanguageIdentifier: "",
                 translationProvider: settings.translationProvider,
                 translationModelID: settings.translationModelID,
                 workMode: settings.workMode,
                 result: .blocked,
-                blockReason: reason
+                blockReason: reason,
+                inputPreview: inputPreview
             )
         )
     }
