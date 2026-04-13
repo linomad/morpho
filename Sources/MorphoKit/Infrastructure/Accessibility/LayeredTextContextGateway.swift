@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 public final class LayeredTextContextGateway: TextContextProvider, TextReplacer {
     private enum RouteChannel {
@@ -14,6 +15,10 @@ public final class LayeredTextContextGateway: TextContextProvider, TextReplacer 
     private let primaryGateway: any TextContextProvider & TextReplacer
     private let fallbackGateway: any TextContextProvider & TextReplacer
     private var routeEntries: [UUID: RouteEntry] = [:]
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "MorphoKit",
+        category: "LayeredTextContextGateway"
+    )
 
     public init() {
         self.primaryGateway = AXTextContextGateway()
@@ -31,15 +36,25 @@ public final class LayeredTextContextGateway: TextContextProvider, TextReplacer 
     public func captureFocusedContext() throws -> TextContext {
         do {
             let context = try primaryGateway.captureFocusedContext()
+            Self.logger.debug("capture succeeded via primary; appBundleId=\(context.appBundleId, privacy: .public)")
             return wrap(context, channel: .primary)
         } catch let error as TranslationWorkflowError {
+            Self.logger.notice(
+                "primary capture failed; error=\(String(describing: error), privacy: .public); fallback=\(self.shouldFallback(for: error), privacy: .public)"
+            )
             guard shouldFallback(for: error) else {
                 throw error
             }
         }
 
-        let fallbackContext = try fallbackGateway.captureFocusedContext()
-        return wrap(fallbackContext, channel: .fallback)
+        do {
+            let fallbackContext = try fallbackGateway.captureFocusedContext()
+            Self.logger.debug("capture succeeded via fallback; appBundleId=\(fallbackContext.appBundleId, privacy: .public)")
+            return wrap(fallbackContext, channel: .fallback)
+        } catch let error as TranslationWorkflowError {
+            Self.logger.error("fallback capture failed; error=\(String(describing: error), privacy: .public)")
+            throw error
+        }
     }
 
     public func replace(in context: TextContext, with translatedText: String, mode: ReplacementMode) throws {

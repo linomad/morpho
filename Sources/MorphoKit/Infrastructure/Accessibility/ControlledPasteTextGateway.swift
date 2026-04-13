@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import OSLog
 
 public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer {
     private struct Session {
@@ -17,6 +18,12 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         let kind: Kind
     }
 
+    private enum CopyReadResult {
+        case copied(String)
+        case clipboardDidNotChange
+        case probeEchoOrEmpty
+    }
+
     private let keyboard: any KeyboardEventInjecting
     private let pasteboard: any PasteboardAccessing
     private let focusedAppBundleIdProvider: () -> String?
@@ -26,6 +33,10 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
     private let selectAllSettleInterval: TimeInterval
     private let pasteSettleInterval: TimeInterval
     private let sleep: (TimeInterval) -> Void
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "MorphoKit",
+        category: "ControlledPasteTextGateway"
+    )
 
     private var sessions: [UUID: Session] = [:]
 
@@ -34,7 +45,7 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         self.pasteboard = SystemPasteboardAccessor()
         self.focusedAppBundleIdProvider = { SystemFocusInspector.focusedAppBundleId() }
         self.secureFieldDetector = { SystemFocusInspector.isFocusedSecureField() }
-        self.copyPollingAttempts = 12
+        self.copyPollingAttempts = 30
         self.copyPollingInterval = 0.01
         self.selectAllSettleInterval = 0.03
         self.pasteSettleInterval = 0.1
@@ -48,7 +59,7 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         pasteboard: any PasteboardAccessing,
         focusedAppBundleIdProvider: @escaping () -> String?,
         secureFieldDetector: @escaping () -> Bool,
-        copyPollingAttempts: Int = 12,
+        copyPollingAttempts: Int = 30,
         copyPollingInterval: TimeInterval = 0.01,
         selectAllSettleInterval: TimeInterval = 0.03,
         pasteSettleInterval: TimeInterval = 0.1,
@@ -71,8 +82,10 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         guard let appBundleId = focusedAppBundleIdProvider() else {
             throw TranslationWorkflowError.focusedInputUnavailable
         }
+        Self.logger.debug("fallback capture started; appBundleId=\(appBundleId, privacy: .public)")
 
         guard !secureFieldDetector() else {
+            Self.logger.notice("fallback capture aborted; secure field detected; appBundleId=\(appBundleId, privacy: .public)")
             return TextContext(
                 appBundleId: appBundleId,
                 fullText: "",
@@ -118,6 +131,10 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         }
 
         guard focusedAppBundleIdProvider() == session.appBundleId else {
+            let currentAppBundleId = self.focusedAppBundleIdProvider() ?? "unknown"
+            Self.logger.notice(
+                "fallback replace aborted; focused app changed; expected=\(session.appBundleId, privacy: .public); current=\(currentAppBundleId, privacy: .public)"
+            )
             throw TranslationWorkflowError.focusedInputUnavailable
         }
 
@@ -132,6 +149,7 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
             try keyboard.trigger(.paste)
             wait(pasteSettleInterval)
         } catch {
+            Self.logger.error("fallback replace failed; mode=\(String(describing: mode), privacy: .public); error=\(String(describing: error), privacy: .public)")
             pasteboard.restore(snapshot)
             throw TranslationWorkflowError.replacementFailed
         }
@@ -145,16 +163,23 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
             pasteboard.restore(snapshot)
         }
 
-        if let selectedText = try copyText(selectAllBeforeCopy: false),
-           isMeaningful(text: selectedText) {
-            return CapturedText(text: selectedText, kind: .selection)
+        if let selectedText = try copyText(selectAllBeforeCopy: false) {
+            if isMeaningful(text: selectedText) {
+                Self.logger.debug("fallback capture got selected text; length=\((selectedText as NSString).length, privacy: .public)")
+                return CapturedText(text: selectedText, kind: .selection)
+            }
+            Self.logger.notice("fallback capture selected text is empty after trim")
         }
 
-        if let fullText = try copyText(selectAllBeforeCopy: true),
-           isMeaningful(text: fullText) {
-            return CapturedText(text: fullText, kind: .entireField)
+        if let fullText = try copyText(selectAllBeforeCopy: true) {
+            if isMeaningful(text: fullText) {
+                Self.logger.debug("fallback capture got entire field text; length=\((fullText as NSString).length, privacy: .public)")
+                return CapturedText(text: fullText, kind: .entireField)
+            }
+            Self.logger.notice("fallback capture entire-field text is empty after trim")
         }
 
+        Self.logger.error("fallback capture failed; no readable text from copy path")
         throw TranslationWorkflowError.unsupportedInputControl
     }
 
@@ -162,6 +187,7 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
         let probeToken = "morpho-probe-\(UUID().uuidString)"
         pasteboard.writeString(probeToken)
         let baselineChangeCount = pasteboard.changeCount
+        let captureMode = selectAllBeforeCopy ? "entire-field" : "selection"
 
         do {
             if selectAllBeforeCopy {
@@ -173,10 +199,21 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
             throw TranslationWorkflowError.focusedInputUnavailable
         }
 
-        return readCopiedSelection(
+        let readResult = readCopiedSelection(
             afterChangeCount: baselineChangeCount,
             probeToken: probeToken
         )
+
+        switch readResult {
+        case .copied(let copied):
+            return copied
+        case .clipboardDidNotChange:
+            Self.logger.notice("fallback copy got no clipboard update; mode=\(captureMode, privacy: .public)")
+            return nil
+        case .probeEchoOrEmpty:
+            Self.logger.notice("fallback copy returned probe/empty content; mode=\(captureMode, privacy: .public)")
+            return nil
+        }
     }
 
     private func isMeaningful(text: String) -> Bool {
@@ -186,28 +223,51 @@ public final class ControlledPasteTextGateway: TextContextProvider, TextReplacer
     private func readCopiedSelection(
         afterChangeCount baselineChangeCount: Int,
         probeToken: String
-    ) -> String? {
+    ) -> CopyReadResult {
+        var sawClipboardChange = false
+        var sawProbeOrEmpty = false
+
         for _ in 0..<copyPollingAttempts {
             if pasteboard.changeCount > baselineChangeCount {
-                return validatedCopiedText(probeToken: probeToken)
+                sawClipboardChange = true
+                switch validatedCopiedText(probeToken: probeToken) {
+                case .copied(let copied):
+                    return .copied(copied)
+                case .probeEchoOrEmpty:
+                    sawProbeOrEmpty = true
+                default:
+                    break
+                }
             }
 
             wait(copyPollingInterval)
         }
 
         if pasteboard.changeCount > baselineChangeCount {
-            return validatedCopiedText(probeToken: probeToken)
+            sawClipboardChange = true
+            switch validatedCopiedText(probeToken: probeToken) {
+            case .copied(let copied):
+                return .copied(copied)
+            case .probeEchoOrEmpty:
+                sawProbeOrEmpty = true
+            default:
+                break
+            }
         }
 
-        return nil
+        if sawProbeOrEmpty || sawClipboardChange {
+            return .probeEchoOrEmpty
+        }
+
+        return .clipboardDidNotChange
     }
 
-    private func validatedCopiedText(probeToken: String) -> String? {
+    private func validatedCopiedText(probeToken: String) -> CopyReadResult {
         guard let copied = pasteboard.readString(), copied != probeToken else {
-            return nil
+            return .probeEchoOrEmpty
         }
 
-        return copied
+        return .copied(copied)
     }
 
     private func wait(_ interval: TimeInterval) {

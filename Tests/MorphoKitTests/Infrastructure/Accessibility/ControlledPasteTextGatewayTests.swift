@@ -148,6 +148,47 @@ final class ControlledPasteTextGatewayTests: XCTestCase {
         XCTAssertEqual(pasteboard.currentString, "handleCategoryChange")
     }
 
+    func testCaptureKeepsPollingWhenCopyInitiallyEchoesProbeTokenThenProvidesText() throws {
+        let pasteboard = PasteboardFake(initialString: "clipboard-original")
+        let keyboard = KeyboardSpy()
+        var pendingDelayedCopy = false
+
+        keyboard.onTrigger = { shortcut in
+            guard shortcut == .copy else {
+                return
+            }
+
+            if !pendingDelayedCopy {
+                // First copy result mirrors probe token, which can happen before the app
+                // finishes writing the actual copied text.
+                pasteboard.simulateCopySelection(pasteboard.readString() ?? "")
+                pendingDelayedCopy = true
+            }
+        }
+
+        let gateway = ControlledPasteTextGateway(
+            keyboard: keyboard,
+            pasteboard: pasteboard,
+            focusedAppBundleIdProvider: { "com.jd.TimLine" },
+            secureFieldDetector: { false },
+            copyPollingAttempts: 3,
+            copyPollingInterval: 0.01,
+            sleep: { _ in
+                if pendingDelayedCopy {
+                    pasteboard.simulateCopySelection("delayed copied text")
+                    pendingDelayedCopy = false
+                }
+            }
+        )
+
+        let context = try gateway.captureFocusedContext()
+
+        XCTAssertEqual(context.selectedText, "delayed copied text")
+        XCTAssertEqual(context.fullText, "delayed copied text")
+        XCTAssertEqual(keyboard.triggeredShortcuts, [.copy])
+        XCTAssertEqual(pasteboard.currentString, "clipboard-original")
+    }
+
     func testCaptureFailsWhenTextCannotBeCopied() {
         let pasteboard = PasteboardFake(initialString: "clipboard-original")
         let keyboard = KeyboardSpy()

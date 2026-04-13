@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import OSLog
 
 public final class AXTextContextGateway: TextContextProvider, TextReplacer {
     private struct ResolvedTextElement {
@@ -18,6 +19,10 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
     private let enhancedUserInterfaceAttribute = "AXEnhancedUserInterface"
     private let sleep: (TimeInterval) -> Void
     private var focusedElements: [UUID: AXUIElement] = [:]
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "MorphoKit",
+        category: "AXTextContextGateway"
+    )
 
     public init() {
         self.sleep = { interval in
@@ -112,6 +117,12 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
             return resolved
         }
 
+        let focusedRole = readTextAttribute(kAXRoleAttribute, from: start) ?? "unknown"
+        let focusedSubrole = readTextAttribute(kAXSubroleAttribute, from: start) ?? "unknown"
+        let appBundleId = bundleIdentifier(for: start)
+        Self.logger.notice(
+            "AX resolve failed; appBundleId=\(appBundleId, privacy: .public); focusedRole=\(focusedRole, privacy: .public); focusedSubrole=\(focusedSubrole, privacy: .public)"
+        )
         throw TranslationWorkflowError.unsupportedInputControl
     }
 
@@ -123,6 +134,7 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
                 throw error
             }
 
+            Self.logger.notice("AX unsupported control detected; retry with manual accessibility")
             return try retryResolveTextElementAfterManualAccessibility(
                 from: focused,
                 originalError: error
@@ -136,6 +148,8 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
         from focused: AXUIElement,
         originalError: TranslationWorkflowError
     ) throws -> ResolvedTextElement {
+        let appBundleId = bundleIdentifier(for: focused)
+        Self.logger.notice("enabling manual accessibility; appBundleId=\(appBundleId, privacy: .public)")
         enableManualAccessibility(for: focused)
         wait(manualAccessibilityRetryDelay)
 
@@ -143,6 +157,9 @@ public final class AXTextContextGateway: TextContextProvider, TextReplacer {
             let retriedFocused = try focusedElement()
             return try resolveTextElement(from: retriedFocused)
         } catch {
+            Self.logger.error(
+                "AX retry after manual accessibility failed; appBundleId=\(appBundleId, privacy: .public); error=\(String(describing: error), privacy: .public)"
+            )
             throw originalError
         }
     }
